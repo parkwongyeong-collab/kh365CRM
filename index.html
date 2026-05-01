@@ -878,7 +878,16 @@ function loadAll(){
     if(li==='1'){
       S.isLoggedIn=true;
       const savedUser=localStorage.getItem('kh365__user');
-      if(savedUser){const u=JSON.parse(savedUser);S.user={name:u.name||'관리자',email:u.email||'',role:u.role||'staff'};}
+      if(savedUser){
+        const u=JSON.parse(savedUser);
+        // localStorage perms에서 최신 권한 로드
+        let p=u.pages||[];
+        try{
+          const perms=JSON.parse(localStorage.getItem('kh365_perms')||'{}');
+          if(perms[u.email]) p=perms[u.email];
+        }catch(e){}
+        S.user={name:u.name||'관리자',email:u.email||'',role:u.role||'staff',pages:p};
+      }
     }
   }catch{}
 }
@@ -1520,7 +1529,11 @@ function renderSidebar(){
   // 권한 필터링 - admin은 전체, 나머지는 pages 기준
   const userRole=S.user?.role||'staff';
   const userPages=S.user?.pages||[];
-  const items=(userRole==='admin'||userPages.length===0)?allItems:allItems.filter(it=>userPages.includes(it.id));
+  // admin은 전체, staff는 pages 기준 (pages 없으면 기본 제한)
+  const defaultStaffPages=['dashboard','calendar','patients','newpatient','ledger','happycall','schedule','messages'];
+  let effectivePages=userPages;
+  if(userRole!=='admin'&&userPages.length===0) effectivePages=defaultStaffPages;
+  const items=(userRole==='admin')?allItems:allItems.filter(it=>effectivePages.includes(it.id));
   const nm=S.user.name||'관리자';
   return`<div class="sidebar">
     <div class="sidebar-logo">
@@ -3969,7 +3982,7 @@ window.doLogin=()=>{
     let savedPages=user.pages||[];
     try{
       const perms=JSON.parse(localStorage.getItem('kh365_perms')||'{}');
-      if(perms[user.email]) savedPages=perms[user.email];
+      if(perms[user.email]&&perms[user.email].length>0) savedPages=perms[user.email];
     }catch(e){}
     S.user={name:user.name,email:user.email,role:user.role,pages:savedPages};
     try{
