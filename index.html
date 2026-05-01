@@ -330,8 +330,8 @@ const BIGUBYEO_PRESETS=[
   {name:'공진단',days:10,label:'공진단 10일'},
   {name:'공진단',days:30,label:'공진단 30일'},
 ];
-const SHIFTS=['근무','DS','휴무','월차','연차','병가','기타'];
-const SHIFT_COLORS={근무:'#6b7280',DS:'#2563eb',휴무:'#ef4444',월차:'#eab308',연차:'#f97316',병가:'#22c55e',기타:'#ec4899'};
+const SHIFTS=['근무','DS','휴무','월차','연차','병가','대체','기타'];
+const SHIFT_COLORS={근무:'#6b7280',DS:'#2563eb',휴무:'#ef4444',월차:'#eab308',연차:'#f97316',병가:'#22c55e',대체:'#06b6d4',기타:'#ec4899'};
 const REFERRAL=['지인소개','인터넷','SNS','현수막','TV/라디오','기타'];
 const TREATMENT=['두통','안통','턱관절','경추통증','어깨통증','가슴통증','등통증','옆구리통증','허리통증','골반통증','무릎통증','종아리통증','발목통증','복숭아뼈통증','발바닥통증','발가락통증','엘보우통증','손목통증','손가락통증','소화불량','일반한약','공진단','다이어트'];
 const GUIDANCE=['전화','문자','카카오','직접','없음'];
@@ -378,7 +378,7 @@ var S={
   patients:[],ledger:{},employees:['김간호','이실장','박치료사'],
   schedule:{},messageLogs:[],inpatients:{},happycalls:{},
   ledgerDate:todayStr(),calMonth:todayStr().slice(0,7),scheduleMonth:todayStr().slice(0,7),happycallDate:todayStr(),
-  modal:null,toast:null,searchQ:'',isLoggedIn:false,hcPtSearch:'',hcAcOpen:false,hcTab:'daily',drawerOpen:false,hcPopup:null,bgModal_month:null,bgModal_search:'',ptSortKey:'chart',ptSortDir:'asc',ptSelected:new Set(),ptSelectMode:false,ptPage:1,quickAppts:[],_quickApptDate:'',quickApptsHistory:[],statsTab:'daily',goalRevenue:0,
+  modal:null,toast:null,searchQ:'',isLoggedIn:false,hcPtSearch:'',hcAcOpen:false,hcTab:'daily',drawerOpen:false,hcPopup:null,bgModal_month:null,bgModal_search:'',ptSortKey:'chart',ptSortDir:'asc',ptSelected:new Set(),ptSelectMode:false,ptPage:1,quickAppts:[],_quickApptDate:'',quickApptsHistory:[],scheduleNotice:{},statsTab:'daily',goalRevenue:0,
   user:{name:'관리자',email:'pwk2956@naver.com',role:'admin'},
   solapiKey:'',solapiSecret:'',solapiSender:'',
   supabaseUrl:'https://mzdxunkqewctmognveqo.supabase.co',supabaseKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16ZHh1bmtxZXdjdG1vZ252ZXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQ2NTMsImV4cCI6MjA4OTM2MDY1M30.5e891hcJA7gBMqAgwglEjgHzIHLB_sSTVanu25EIizA',sbConnected:false,
@@ -3380,8 +3380,55 @@ function renderSchedule(){
       </div>
     </div>
 
+    <!-- 전달사항 -->
+    <div class="section-card" style="margin-top:16px">
+      <div class="section-hdr" style="flex-wrap:wrap;gap:8px">
+        <div class="section-title">📋 전달사항 (${m})</div>
+        <span id="sched-notice-saved" style="font-size:11px;color:#9ca3af"></span>
+      </div>
+      <div style="padding:4px">
+        <textarea id="sched-notice-area"
+          style="width:100%;min-height:120px;padding:10px;font-size:14px;border:1px solid #e5e7eb;border-radius:8px;resize:vertical;font-family:inherit;line-height:1.7;outline:none;box-sizing:border-box"
+          placeholder="${m} 전달사항을 입력하세요..."
+          onblur="saveSchedNotice('${m}')"
+        >${S.scheduleNotice&&S.scheduleNotice[m]||''}</textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px">
+          <button class="btn btn-sm" style="background:#2563eb;color:#fff;border-color:#2563eb" onclick="saveSchedNotice('${m}')">💾 저장</button>
+        </div>
+      </div>
+    </div>
+
   </div>`;
 }
+window.saveSchedNotice=async function(month){
+  const ta=document.getElementById('sched-notice-area');
+  const text=ta?ta.value:'';
+  if(!S.scheduleNotice) S.scheduleNotice={};
+  S.scheduleNotice[month]=text;
+  try{localStorage.setItem('kh365_scheduleNotice',JSON.stringify(S.scheduleNotice));}catch(e){}
+  const el=document.getElementById('sched-notice-saved');
+  if(!_sb||!S.sbConnected){
+    if(el) el.textContent='로컬 저장됨';
+    return;
+  }
+  try{
+    await _sb.from('message_logs').delete().eq('patient_name','__SCHED_NOTICE__').eq('to_number',month);
+    const{error}=await _sb.from('message_logs').insert([{
+      created_at_kr:new Date().toLocaleString('ko-KR'),
+      patient_name:'__SCHED_NOTICE__',
+      to_number:month,
+      type:'sched_notice',
+      status:'active',
+      text:text
+    }]);
+    if(error) throw error;
+    if(el) el.textContent='✅ '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 저장됨';
+  }catch(e){
+    console.error('전달사항 저장 오류:',e);
+    if(el) el.textContent='⚠️ 저장 실패';
+  }
+};
+
 window.addEmp=()=>{const n=prompt('직원 이름:');if(!n||!n.trim())return;if(S.employees.includes(n.trim()))return showToast('이미 있는 직원입니다','err');S.employees.push(n.trim());save('employees');if(_sb&&S.sbConnected)sbSave('employees').catch(e=>console.error(e));render()};
 window.delEmp=(name)=>{if(!confirm(`${name}을(를) 삭제하시겠습니까?`))return;S.employees=S.employees.filter(e=>e!==name);save('employees');if(_sb&&S.sbConnected)sbSave('employees').catch(e=>console.error(e));render()};
 
