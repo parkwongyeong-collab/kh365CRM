@@ -1505,7 +1505,7 @@ window.openDrawer=()=>{S.drawerOpen=true;render()};
 window.closeDrawer=()=>{S.drawerOpen=false;render()};
 
 function renderSidebar(){
-  const items=[
+  const allItems=[
     {id:'dashboard',icon:I.grid,label:'보고서'},
     {id:'calendar',icon:I.cal,label:'달력 예약뷰'},
     {id:'patients',icon:I.users,label:'환자 목록'},
@@ -1514,8 +1514,13 @@ function renderSidebar(){
     {id:'happycall',icon:I.phone,label:'해피콜'},
     {id:'schedule',icon:I.sched,label:'직원 근무표'},
     {id:'messages',icon:I.msg,label:'알림톡 전송'},
+    {id:'stats',icon:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>',label:'📊 통계'},
     {id:'settings',icon:I.set,label:'설정'},
   ];
+  // 권한 필터링 - admin은 전체, 나머지는 pages 기준
+  const userRole=S.user?.role||'staff';
+  const userPages=S.user?.pages||[];
+  const items=(userRole==='admin'||userPages.length===0)?allItems:allItems.filter(it=>userPages.includes(it.id));
   const nm=S.user.name||'관리자';
   return`<div class="sidebar">
     <div class="sidebar-logo">
@@ -3341,7 +3346,7 @@ function renderSchedule(){
         <td style="position:sticky;left:0;z-index:9;background:#fff;white-space:nowrap;font-size:13px;font-weight:600;border-right:2px solid #e5e7eb;padding:4px 10px">${emp}<button class="btn btn-sm" style="margin-left:6px;padding:2px 6px;font-size:11px" onclick="delEmp('${emp}')">×</button></td>
         ${Array.from({length:days},(_,i)=>{const sh=getShift(emp,i+1);return`<td style="padding:2px;text-align:center"><select
               onchange="setShift('${emp}',${i+1},this.value)"
-              style="font-size:13px;padding:4px 2px;border:2px solid ${sh?SHIFT_COLORS[sh]:'#e5e7eb'};border-radius:6px;background:${sh?SHIFT_COLORS[sh]+'33':'#f9fafb'};color:${sh?SHIFT_COLORS[sh]:'#9ca3af'};font-weight:${sh?'700':'400'};min-width:58px;cursor:pointer;outline:none;text-align:center;text-align-last:center">
+              style="font-size:13px;padding:4px 6px;border:2px solid ${sh?SHIFT_COLORS[sh]:'#e5e7eb'};border-radius:6px;background:${sh?SHIFT_COLORS[sh]+'33':'#f9fafb'};color:${sh?SHIFT_COLORS[sh]:'#9ca3af'};font-weight:${sh?'700':'400'};width:62px;cursor:pointer;outline:none;text-align:center;text-align-last:center;-webkit-appearance:none;-moz-appearance:none;appearance:none;">
               <option value="">·</option>
               ${SHIFTS.map(s=>`<option value="${s}" ${sh===s?'selected':''}>${s}</option>`).join('')}
             </select></td>`}).join('')}</tr>`).join('')}
@@ -3390,10 +3395,10 @@ function renderSchedule(){
           return`<div style="border:1px solid ${isToday?'#2563eb':'#e5e7eb'};border-radius:8px;padding:5px;min-height:90px;background:${isToday?'#eff6ff':'#fff'}">
             <div style="font-size:11px;font-weight:700;color:${dow===0?'#ef4444':dow===6?'#3b82f6':isToday?'#2563eb':'#374151'};margin-bottom:3px">${d}</div>
             ${Object.entries(shiftMap).length===0?'<div style="font-size:11px;color:#d1d5db;text-align:center">-</div>':
-              Object.entries(shiftMap).map(([sh,empList])=>`
+              SHIFTS.filter(s=>shiftMap[s]).map(s=>`
                 <div style="margin-bottom:3px">
-                  <span style="font-size:11px;font-weight:700;color:${SHIFT_COLORS[sh]||'#374151'};background:${SHIFT_COLORS[sh]||'#94a3b8'}22;padding:1px 5px;border-radius:4px">${sh}</span>
-                  <div style="font-size:11px;color:#374151;line-height:1.5;margin-top:1px">${empList.join(', ')}</div>
+                  <span style="font-size:11px;font-weight:700;color:${SHIFT_COLORS[s]||'#374151'};background:${SHIFT_COLORS[s]||'#94a3b8'}22;padding:1px 5px;border-radius:4px">${s}</span>
+                  <div style="font-size:11px;color:#374151;line-height:1.5;margin-top:1px">${shiftMap[s].join(', ')}</div>
                 </div>`).join('')}
           </div>`;
         }).join('')}
