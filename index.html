@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>경희365한의원 CRM</title>
+<title>환자 관리 시스템</title>
 <!-- ========== 보안 헤더 (meta 태그로 설정 가능한 모든 항목) ========== -->
 
 <!-- 1. CSP: XSS 및 인젝션 공격 차단 -->
@@ -297,12 +297,10 @@ const CATEGORIES=['재진','신환','ta초진','ta','6개월재초진','건보�
 // 비급여 처방 프리셋 (처방명, 기간일수)
 // ── 사용자 계정 ─────────────────────────────────────
 const USERS=[
-  {email:'1@1.com',          pw:'0984',      name:'관리자', role:'admin'},
-  {email:'kh365@kh365.com',  pw:'rudgml365', name:'원장님', role:'doctor'},
-  {email:'kh3651@naver.com', pw:'rudgml1',   name:'직원1',  role:'staff'},
-  {email:'kh3652@naver.com', pw:'rudgml2',   name:'직원2',  role:'staff'},
-  {email:'kh3653@naver.com', pw:'rudgml3',   name:'직원3',  role:'staff'},
-  {email:'kh3654@naver.com', pw:'rudgml4',   name:'직원4',  role:'staff'},
+  {email:'pwk2956@naver.com', pw:'qwe0984',    name:'관리자', role:'admin'},
+  {email:'doridori@naver.com',pw:'20161107jh#', name:'원장님', role:'doctor'},
+  {email:'lee@naver.com',     pw:'20161107jh!', name:'이직원', role:'staff'},
+  {email:'kim@naver.com',     pw:'20161107jh!', name:'김직원', role:'staff'},
 ];
 
 const ROOMS=[
@@ -384,7 +382,7 @@ var S={
   modal:null,toast:null,searchQ:'',isLoggedIn:false,hcPtSearch:'',hcAcOpen:false,hcTab:'daily',drawerOpen:false,hcPopup:null,bgModal_month:null,bgModal_search:'',ptSortKey:'chart',ptSortDir:'asc',ptSelected:new Set(),ptSelectMode:false,ptPage:1,quickAppts:[],_quickApptDate:'',quickApptsHistory:[],notices:{},statsTab:'daily',goalRevenue:0,
   user:{name:'관리자',email:'pwk2956@naver.com',role:'admin'},
   solapiKey:'',solapiSecret:'',solapiSender:'',
-  supabaseUrl:'https://zkpngqrtivsiapgitksz.supabase.co',supabaseKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16ZHh1bmtxZXdjdG1vZ252ZXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQ2NTMsImV4cCI6MjA4OTM2MDY1M30.5e891hcJA7gBMqAgwglEjgHzIHLB_sSTVanu25EIizA',sbConnected:false,
+  supabaseUrl:'https://mzdxunkqewctmognveqo.supabase.co',supabaseKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16ZHh1bmtxZXdjdG1vZ252ZXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQ2NTMsImV4cCI6MjA4OTM2MDY1M30.5e891hcJA7gBMqAgwglEjgHzIHLB_sSTVanu25EIizA',sbConnected:false,
   calSelectedDate:null,acTarget:null,acList:[],acRowId:null,
   newPt:{chartNumber:'',name:'',gender:'남',phone:'',visitType:'신환',referralPath:'지인소개',treatmentArea:[],memo:''},
   editPt:null,
@@ -602,8 +600,8 @@ async function sbLoadAll(){
       S.messageLogs=logRows.map(r=>({id:r.id,createdAt:r.created_at_kr||'',patientName:r.patient_name||'',to:r.to_number||'',type:r.type||'',status:r.status||'',text:r.text||''}));
       if(!S.notices) S.notices={};
       noticeRows.forEach(r=>{
-        const date=r.id.replace('notice:','');
-        S.notices[date]=r.text||'';
+        const date=r.to_number||'';
+        if(date) S.notices[date]=r.text||'';
       });
     }
     if(!inp.error&&inp.data){
@@ -621,8 +619,8 @@ async function sbLoadAll(){
     }
     // wardBeds, wardHistory는 Supabase 테이블 없으므로 localStorage에서 보완
     try{
-      const wbStr=localStorage.getItem('kh365_wardBeds');
-      const whStr=localStorage.getItem('kh365_wardHistory');
+      const wbStr=localStorage.getItem('doridori_wardBeds');
+      const whStr=localStorage.getItem('doridori_wardHistory');
       if(wbStr) S.wardBeds=JSON.parse(wbStr);
       if(whStr){ const wh=JSON.parse(whStr); S.wardHistory=Array.isArray(wh)?wh:[]; }
     }catch(e){}
@@ -816,8 +814,8 @@ const SB_KEYS=['patients','ledger','employees','schedule','messageLogs','inpatie
 function save(key){
   // 1. localStorage (오프라인 백업)
   try{
-    localStorage.setItem('kh365_'+key,JSON.stringify(S[key]));
-    localStorage.setItem('kh365__lastSaved',new Date().toLocaleString('ko-KR'));
+    localStorage.setItem('doridori_'+key,JSON.stringify(S[key]));
+    localStorage.setItem('doridori__lastSaved',new Date().toLocaleString('ko-KR'));
   }catch(e){ console.error('localStorage 저장 오류:',key,e); }
 
   // 2. Supabase 우선 저장 (연결된 경우)
@@ -843,20 +841,20 @@ async function loadFromSupabaseOrLocal(){
   return false;
 }
 // 하드코딩된 기본 Supabase 설정
-var DEFAULT_SB_URL='https://zkpngqrtivsiapgitksz.supabase.co';
-var DEFAULT_SB_KEY='sb_publishable_Efnf5r3s-yZt8oxHIGSUSw_8W6-mCr-';
+var DEFAULT_SB_URL='https://mzdxunkqewctmognveqo.supabase.co';
+var DEFAULT_SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16ZHh1bmtxZXdjdG1vZ252ZXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQ2NTMsImV4cCI6MjA4OTM2MDY1M30.5e891hcJA7gBMqAgwglEjgHzIHLB_sSTVanu25EIizA';
 
 function loadAll(){
   // patients 제외 - Supabase에서만 로드 (localStorage 5MB 한계 우회)
   ['ledger','employees','schedule','messageLogs','inpatients','happycalls',
    'solapiKey','solapiSecret','solapiSender','user'].forEach(k=>{
-    try{const v=localStorage.getItem('kh365_'+k);if(v!=null)S[k]=JSON.parse(v)}catch(e){console.warn('Load error:',k,e);}
+    try{const v=localStorage.getItem('doridori_'+k);if(v!=null)S[k]=JSON.parse(v)}catch(e){console.warn('Load error:',k,e);}
   });
 
   // supabaseUrl/Key는 빈값이면 기본값 사용
   try{
-    const savedUrl=localStorage.getItem('kh365_supabaseUrl');
-    const savedKey=localStorage.getItem('kh365_supabaseKey');
+    const savedUrl=localStorage.getItem('doridori_supabaseUrl');
+    const savedKey=localStorage.getItem('doridori_supabaseKey');
     S.supabaseUrl=(savedUrl&&JSON.parse(savedUrl))||DEFAULT_SB_URL;
     S.supabaseKey=(savedKey&&JSON.parse(savedKey))||DEFAULT_SB_KEY;
   }catch(e){
@@ -865,15 +863,15 @@ function loadAll(){
   }
   // 로그인 상태 복원
   try{
-    const li=localStorage.getItem('kh365__loggedIn');
+    const li=localStorage.getItem('doridori__loggedIn');
     if(li==='1'){
       S.isLoggedIn=true;
-      const savedUser=localStorage.getItem('kh365__user');
+      const savedUser=localStorage.getItem('doridori__user');
       if(savedUser){const u=JSON.parse(savedUser);S.user={name:u.name||'관리자',email:u.email||'',role:u.role||'staff'};}
     }
   }catch{}
 }
-function getLastSaved(){try{return localStorage.getItem('kh365__lastSaved')||null;}catch{return null;}}
+function getLastSaved(){try{return localStorage.getItem('doridori__lastSaved')||null;}catch{return null;}}
 function showToast(msg,type='ok'){S.toast={msg,type};render();setTimeout(()=>{S.toast=null;render()},2800)}
 // ── 일계표 자동완성 DOM 직접 업데이트 (포커스 유지) ──
 window.updLedgerAC=function(d, rowId, val){
@@ -1154,15 +1152,16 @@ window.saveNotice=async function(date){
     // notice_date + text를 message_logs 테이블의 별도 레코드로 저장
     // id = 'notice:날짜' 형태로 고유 식별
     const noticeId='notice:'+date;
-    const{error}=await _sb.from('message_logs').upsert([{
-      id: noticeId,
+    // 기존 공지 삭제 후 새로 삽입 (id 컬럼 없는 경우 대비)
+    await _sb.from('message_logs').delete().eq('patient_name','__NOTICE__').eq('to_number',date);
+    const{error}=await _sb.from('message_logs').insert([{
       created_at_kr: new Date().toLocaleString('ko-KR'),
       patient_name: '__NOTICE__',
-      to_number: '',
+      to_number: date,
       type: 'notice',
       status: 'active',
       text: text
-    }],{onConflict:'id'});
+    }]);
     if(error) throw error;
     if(msgEl) msgEl.textContent='✅ '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 저장됨';
     S._noticeDirty=false;
@@ -1326,7 +1325,7 @@ function getLedger(d){return S.ledger[d]||[]}
 function saveLedger(d,rows){
   S.ledger[d]=rows;
   // localStorage 저장
-  try{localStorage.setItem('kh365_ledger',JSON.stringify(S.ledger));}catch(e){}
+  try{localStorage.setItem('doridori_ledger',JSON.stringify(S.ledger));}catch(e){}
   // Supabase - 해당 날짜만 저장 (빠름)
   if(_sb&&S.sbConnected){
     sbSave('ledger:'+d).then(()=>{
@@ -1504,7 +1503,7 @@ function renderDrawer(){
       </button>`).join('')}
     </div>
     <div style="padding:16px 20px;border-top:1px solid #f3f4f6;margin-top:auto">
-      <button onclick="S.isLoggedIn=false;S.user={name:'',email:'',role:''};try{localStorage.removeItem('kh365__loggedIn');localStorage.removeItem('kh365__user');}catch{};closeDrawer();render()" style="display:flex;align-items:center;gap:8px;color:#ef4444;border:none;background:none;font-size:13px;cursor:pointer;font-family:inherit">
+      <button onclick="S.isLoggedIn=false;S.user={name:'',email:'',role:''};try{localStorage.removeItem('doridori__loggedIn');localStorage.removeItem('doridori__user');}catch{};closeDrawer();render()" style="display:flex;align-items:center;gap:8px;color:#ef4444;border:none;background:none;font-size:13px;cursor:pointer;font-family:inherit">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         로그아웃
       </button>
@@ -1567,7 +1566,7 @@ function renderSidebar(){
           ${getLastSaved()} 저장됨
         </div>`:'<div style="font-size:10px;color:#f59e0b;margin-top:8px">⚠️ Supabase 미연결</div>'
       }
-      <div class="logout-btn" onclick="S.isLoggedIn=false;S.user={name:'',email:'',role:''};try{localStorage.removeItem('kh365__loggedIn');localStorage.removeItem('kh365__user');}catch{};render()">${I.logout} 로그아웃</div>
+      <div class="logout-btn" onclick="S.isLoggedIn=false;S.user={name:'',email:'',role:''};try{localStorage.removeItem('doridori__loggedIn');localStorage.removeItem('doridori__user');}catch{};render()">${I.logout} 로그아웃</div>
     </div>
   </div>`;
 }
@@ -2746,7 +2745,7 @@ window.applyDupDelete=async function(){
 
   // 1. 로컬 먼저 제거 + localStorage 캐시 완전 삭제
   S.patients=S.patients.filter(p=>!delIds.includes(p.id));
-  try{localStorage.removeItem('kh365_patients');}catch(e){}
+  try{localStorage.removeItem('doridori_patients');}catch(e){}
   render();
 
   // 2. Supabase 삭제
@@ -2826,7 +2825,7 @@ window.saveNewPt=()=>{
   if(S.patients.some(pt=>pt.chartNumber===p.chartNumber))return showToast('이미 등록된 차트번호입니다','err');
   const newPatient={...p,id:uid(),createdAt:new Date().toISOString()};
   S.patients.push(newPatient);
-  try{localStorage.setItem('kh365_patients',JSON.stringify(S.patients));}catch(e){}
+  try{localStorage.setItem('doridori_patients',JSON.stringify(S.patients));}catch(e){}
   // 신규 환자 1명만 바로 Supabase에 저장 (빠름)
   if(_sb&&S.sbConnected){
     _sb.from('patients').upsert([ptToRow(newPatient)],{onConflict:'id'})
@@ -2841,7 +2840,7 @@ window.saveEditPt=()=>{
   const p=S.editPt;
   if(!p.chartNumber||!p.name)return showToast('차트번호와 이름은 필수입니다','err');
   S.patients=S.patients.map(pt=>pt.id===p.id?{...p}:pt);
-  try{localStorage.setItem('kh365_patients',JSON.stringify(S.patients));}catch(e){}
+  try{localStorage.setItem('doridori_patients',JSON.stringify(S.patients));}catch(e){}
   // 수정된 환자 1명만 Supabase 저장
   if(_sb&&S.sbConnected){
     _sb.from('patients').upsert([ptToRow(p)],{onConflict:'id'})
@@ -3388,9 +3387,14 @@ function renderSchedule(){
       </div>
       <button class="btn" onclick="addEmp()">+ 직원 추가</button>
     </div>
-    <div class="section-card" style="overflow-x:auto">
-      <table><thead><tr><th>직원</th>${Array.from({length:days},(_,i)=>{const dt=new Date(y,mo-1,i+1);const isW=dt.getDay()===0||dt.getDay()===6;return`<th style="min-width:36px;text-align:center;${isW?'color:#ef4444':''}">${i+1}<br><span style="font-size:9px;font-weight:400">${['일','월','화','수','목','금','토'][dt.getDay()]}</span></th>`}).join('')}</tr></thead>
-      <tbody>${emps.map(emp=>`<tr><td style="white-space:nowrap;font-size:13px;font-weight:500">${emp}<button class="btn btn-sm" style="margin-left:8px;padding:2px 7px;font-size:11px" onclick="delEmp('${emp}')">×</button></td>${Array.from({length:days},(_,i)=>{const sh=getShift(emp,i+1);return`<td style="padding:2px;text-align:center"><select
+    <div class="section-card" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <table style="border-collapse:separate;border-spacing:0"><thead><tr>
+        <th style="position:sticky;left:0;z-index:10;background:#fff;white-space:nowrap;min-width:100px;padding:6px 10px;border-right:2px solid #e5e7eb;font-size:13px">직원</th>
+        ${Array.from({length:days},(_,i)=>{const dt=new Date(y,mo-1,i+1);const isW=dt.getDay()===0||dt.getDay()===6;return`<th style="min-width:54px;text-align:center;${isW?'color:#ef4444':''};padding:4px 2px">${i+1}<br><span style="font-size:9px;font-weight:400">${['일','월','화','수','목','금','토'][dt.getDay()]}</span></th>`}).join('')}
+      </tr></thead>
+      <tbody>${emps.map(emp=>`<tr>
+        <td style="position:sticky;left:0;z-index:9;background:#fff;white-space:nowrap;font-size:13px;font-weight:600;border-right:2px solid #e5e7eb;padding:4px 10px">${emp}<button class="btn btn-sm" style="margin-left:8px;padding:2px 7px;font-size:11px" onclick="delEmp('${emp}')">×</button></td>
+        ${Array.from({length:days},(_,i)=>{const sh=getShift(emp,i+1);return`<td style="padding:2px;text-align:center"><select
                 onchange="setShift('${emp}',${i+1},this.value)"
                 style="font-size:11px;padding:2px 4px;border:2px solid ${sh?SHIFT_COLORS[sh]:'#e5e7eb'};border-radius:6px;background:${sh?SHIFT_COLORS[sh]+'33':'#f9fafb'};color:${sh?SHIFT_COLORS[sh]:'#9ca3af'};font-weight:${sh?'700':'400'};min-width:48px;cursor:pointer;outline:none">
                 <option value="">·</option>
@@ -3398,6 +3402,78 @@ function renderSchedule(){
               </select></td>`}).join('')}</tr>`).join('')}
       </tbody></table>
     </div>
+
+    <!-- 직원별 통계 -->
+    <div class="section-card" style="margin-top:16px">
+      <div class="section-hdr"><div class="section-title">📊 직원별 근무 통계 (${m})</div></div>
+      <div style="overflow-x:auto">
+        <table style="font-size:13px;width:100%;min-width:500px">
+          <thead><tr style="background:#f8fafc">
+            <th style="text-align:left;padding:8px">직원명</th>
+            ${SHIFTS.map(s=>`<th style="text-align:center;padding:8px;color:${SHIFT_COLORS[s]||'#374151'}">${s}</th>`).join('')}
+            <th style="text-align:center;padding:8px">합계</th>
+          </tr></thead>
+          <tbody>
+          ${emps.map(emp=>{
+            const counts={};
+            SHIFTS.forEach(s=>counts[s]=0);
+            let total=0;
+            for(let d=1;d<=days;d++){
+              const sh=getShift(emp,d);
+              if(sh&&counts[sh]!==undefined){counts[sh]++;total++;}
+            }
+            return`<tr style="border-bottom:1px solid #f3f4f6">
+              <td style="padding:8px;font-weight:600">${emp}</td>
+              ${SHIFTS.map(s=>`<td style="text-align:center;padding:8px;color:${SHIFT_COLORS[s]};font-weight:${counts[s]>0?'700':'400'}">${counts[s]||'-'}</td>`).join('')}
+              <td style="text-align:center;padding:8px;font-weight:700;color:#2563eb">${total}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 달력형 근무표 -->
+    <div class="section-card" style="margin-top:16px">
+      <div class="section-hdr"><div class="section-title">📅 달력형 근무표 (${m})</div></div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:4px">
+        <!-- 요일 헤더 -->
+        ${['일','월','화','수','목','금','토'].map((d,i)=>`
+          <div style="text-align:center;font-size:12px;font-weight:700;padding:6px;color:${i===0?'#ef4444':i===6?'#3b82f6':'#374151'}">${d}</div>
+        `).join('')}
+        <!-- 빈칸 (첫날 요일 맞추기) -->
+        ${Array(new Date(y,mo-1,1).getDay()).fill('<div></div>').join('')}
+        <!-- 날짜 셀 -->
+        ${Array.from({length:days},(_,i)=>{
+          const d=i+1;
+          const date=`${m}-${p2(d)}`;
+          const dow=new Date(y,mo-1,d).getDay();
+          const isToday=date===todayStr();
+          // 이날 근무/휴무/기타 직원 분류
+          const shiftMap={};
+          emps.forEach(emp=>{
+            const sh=getShift(emp,d);
+            if(sh){
+              if(!shiftMap[sh]) shiftMap[sh]=[];
+              shiftMap[sh].push(emp);
+            }
+          });
+          const shiftEntries=Object.entries(shiftMap);
+          return`<div style="border:1px solid ${isToday?'#2563eb':'#e5e7eb'};border-radius:8px;padding:6px;min-height:80px;background:${isToday?'#eff6ff':'#fff'}">
+            <div style="font-size:12px;font-weight:700;color:${dow===0?'#ef4444':dow===6?'#3b82f6':isToday?'#2563eb':'#374151'};margin-bottom:4px">${d}</div>
+            ${shiftEntries.length===0?`<div style="font-size:10px;color:#d1d5db">-</div>`:
+              shiftEntries.map(([sh,empList])=>`
+                <div style="margin-bottom:3px">
+                  <span style="font-size:9px;font-weight:700;color:${SHIFT_COLORS[sh]||'#374151'};background:${SHIFT_COLORS[sh]||'#94a3b8'}22;padding:1px 4px;border-radius:3px">${sh}</span>
+                  <div style="font-size:10px;color:#374151;margin-top:1px">${empList.join(', ')}</div>
+                </div>
+              `).join('')
+            }
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
   </div>`;
 }
 window.addEmp=()=>{const n=prompt('직원 이름:');if(!n||!n.trim())return;if(S.employees.includes(n.trim()))return showToast('이미 있는 직원입니다','err');S.employees.push(n.trim());save('employees');if(_sb&&S.sbConnected)sbSave('employees').catch(e=>console.error(e));render()};
@@ -3655,7 +3731,7 @@ function renderStats(){
 
     <!-- 유입경로 통계 -->
     <div class="section-card" style="margin-bottom:16px">
-      <div class="section-hdr"><div class="section-title">🚪 유입경로 통계 (전체 환자)</div></div>
+      <div class="section-hdr"><div class="section-title">🚪 유입경로 통계</div><span style="font-size:12px;color:#6b7280">전체 환자 기준</span></div>
       <div style="padding:0 4px">
       ${(()=>{
         const refSummary={};
@@ -3664,16 +3740,17 @@ function renderStats(){
         const total=S.patients.length||1;
         const refColors={'간판 집근처':'#3b82f6','가족소개':'#8b5cf6','지인소개':'#10b981','네이버':'#f59e0b','기타':'#9ca3af','플레이스':'#ec4899','SNS':'#06b6d4','인터넷':'#6366f1','현수막':'#f97316','TV/라디오':'#ef4444'};
         if(!refEntries.length) return '<div class="no-data">데이터 없음</div>';
-        return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        return `<div style="display:flex;flex-direction:column;gap:10px">
           ${refEntries.map(([ref,cnt])=>`
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:12px;font-weight:600;min-width:76px;color:${refColors[ref]||'#374151'}">${ref}</span>
-              <div style="flex:1;background:#f3f4f6;border-radius:99px;height:10px;overflow:hidden">
-                <div style="height:100%;border-radius:99px;background:${refColors[ref]||'#94a3b8'};width:${Math.round(cnt/total*100)}%"></div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:13px;font-weight:700;min-width:90px;color:${refColors[ref]||'#374151'}">${ref}</span>
+              <div style="flex:1;background:#f3f4f6;border-radius:99px;height:14px;overflow:hidden">
+                <div style="height:100%;border-radius:99px;background:${refColors[ref]||'#94a3b8'};width:${Math.round(cnt/total*100)}%;transition:width .3s"></div>
               </div>
-              <span style="font-size:12px;min-width:32px;text-align:right;font-weight:600">${cnt}명</span>
-              <span style="font-size:11px;color:#9ca3af;min-width:32px">${Math.round(cnt/total*100)}%</span>
+              <span style="font-size:13px;font-weight:700;min-width:40px;text-align:right">${cnt}명</span>
+              <span style="font-size:12px;color:#6b7280;min-width:36px;text-align:right">${Math.round(cnt/total*100)}%</span>
             </div>`).join('')}
+          <div style="font-size:12px;color:#9ca3af;text-align:right;margin-top:4px">전체 ${total}명 기준</div>
         </div>`;
       })()}
       </div>
@@ -3827,7 +3904,7 @@ window.importBackup=(input)=>{
 window.clearAllData=()=>{
   // clinic_ 접두사 키만 삭제 (다른 사이트 데이터 보호)
   const keys=[];
-  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('kh365_'))keys.push(k);}
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('doridori_'))keys.push(k);}
   keys.forEach(k=>localStorage.removeItem(k));
   S={...S,patients:[],ledger:{},schedule:{},messageLogs:[],inpatients:{},happycalls:{},solapiKey:'',solapiSecret:'',solapiSender:''};
   showToast('초기화 완료');render();
@@ -3842,7 +3919,7 @@ function renderLogin(){
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         </div>
         <div style="font-size:22px;font-weight:800;margin-bottom:4px;color:#111827">환자 관리 시스템</div>
-        <div style="font-size:12px;color:#9ca3af">경희365한의원</div>
+        <div style="font-size:12px;color:#9ca3af">도리도리 한의원</div>
       </div>
       <div class="form-group">
         <label class="lbl">이메일</label>
@@ -3862,8 +3939,8 @@ function renderLogin(){
 window.doLogin=()=>{
   // Rate Limiting - 5회 실패 시 30초 잠금
   const now=Date.now();
-  const failKey='kh365_login_fail';
-  const lockKey='kh365_login_lock';
+  const failKey='doridori_login_fail';
+  const lockKey='doridori_login_lock';
   try{
     const lockUntil=+localStorage.getItem(lockKey)||0;
     if(lockUntil>now){
@@ -3888,18 +3965,18 @@ window.doLogin=()=>{
     S.isLoggedIn=true;
     S.user={name:user.name,email:user.email,role:user.role};
     try{
-      localStorage.setItem('kh365__loggedIn','1');
-      localStorage.setItem('kh365__user',JSON.stringify(S.user));
+      localStorage.setItem('doridori__loggedIn','1');
+      localStorage.setItem('doridori__user',JSON.stringify(S.user));
     }catch{}
     render();
   } else {
     // 실패 카운트 증가
     try{
-      const fails=(+localStorage.getItem('kh365_login_fail')||0)+1;
-      localStorage.setItem('kh365_login_fail',fails);
+      const fails=(+localStorage.getItem('doridori_login_fail')||0)+1;
+      localStorage.setItem('doridori_login_fail',fails);
       if(fails>=5){
         const lockUntil=Date.now()+30000; // 30초 잠금
-        localStorage.setItem('kh365_login_lock',lockUntil);
+        localStorage.setItem('doridori_login_lock',lockUntil);
         if(errEl)errEl.textContent='⛔ 5회 실패! 30초 동안 로그인이 잠깁니다.';
         return;
       }
@@ -4040,7 +4117,7 @@ function init(){
               // patients는 localStorage에 저장 안 함 (5MB 초과 방지)
               // 나머지만 localStorage에 캐시
               ['ledger','employees','schedule','messageLogs','happycalls'].forEach(function(k){
-                try{localStorage.setItem('kh365_'+k,JSON.stringify(S[k]));}catch(e){}
+                try{localStorage.setItem('doridori_'+k,JSON.stringify(S[k]));}catch(e){}
               });
             }
             try{ render(); }catch(e){ console.error('render 오류:', e); }
