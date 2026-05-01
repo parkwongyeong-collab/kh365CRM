@@ -1526,14 +1526,14 @@ function renderSidebar(){
     {id:'stats',icon:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>',label:'📊 통계'},
     {id:'settings',icon:I.set,label:'설정'},
   ];
-  // 권한 필터링 - admin은 전체, 나머지는 pages 기준
   const userRole=S.user?.role||'staff';
-  const userPages=S.user?.pages||[];
-  // admin은 전체, staff는 pages 기준 (pages 없으면 기본 제한)
-  const defaultStaffPages=['dashboard','calendar','patients','newpatient','ledger','happycall','schedule','messages'];
-  let effectivePages=userPages;
-  if(userRole!=='admin'&&userPages.length===0) effectivePages=defaultStaffPages;
-  const items=(userRole==='admin')?allItems:allItems.filter(it=>effectivePages.includes(it.id));
+  const userEmail=S.user?.email||'';
+  // localStorage에서 직접 권한 읽기
+  let allowed=[];
+  try{const p=JSON.parse(localStorage.getItem('kh365_perms')||'{}');if(p[userEmail])allowed=p[userEmail];}catch(e){}
+  if(!allowed.length&&S.user?.pages?.length)allowed=S.user.pages;
+  const defaultPages=['dashboard','calendar','patients','newpatient','ledger','happycall','schedule','messages'];
+  const items=userRole==='admin'?allItems:allowed.length?allItems.filter(i=>allowed.includes(i.id)):allItems.filter(i=>defaultPages.includes(i.id));
   const nm=S.user.name||'관리자';
   return`<div class="sidebar">
     <div class="sidebar-logo">
@@ -3460,7 +3460,7 @@ window.togglePagePerm=async function(email,pageId,checked){
       text:JSON.stringify(user.pages)
     }]);
   }
-  showToast('✅ 권한이 저장되었습니다');
+  showToast('✅ '+user.name+' 권한 저장됨 ('+user.pages.length+'개 메뉴)');
   render();
 }
 
@@ -3989,6 +3989,22 @@ window.doLogin=()=>{
       localStorage.setItem('kh365__loggedIn','1');
       localStorage.setItem('kh365__user',JSON.stringify(S.user));
     }catch{}
+    // Supabase 연결되면 권한 최신화
+    if(_sb&&S.sbConnected){
+      _sb.from('message_logs').select('*').eq('patient_name','__PERM__').eq('to_number',user.email).then(({data})=>{
+        if(data&&data.length>0){
+          const pages=JSON.parse(data[0].text||'[]');
+          S.user.pages=pages;
+          try{
+            const perms=JSON.parse(localStorage.getItem('kh365_perms')||'{}');
+            perms[user.email]=pages;
+            localStorage.setItem('kh365_perms',JSON.stringify(perms));
+            localStorage.setItem('kh365__user',JSON.stringify(S.user));
+          }catch(e){}
+          render();
+        }
+      });
+    }
     render();
   } else {
     // 실패 카운트 증가
