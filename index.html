@@ -593,7 +593,27 @@ async function sbLoadAll(){
       sch.data.forEach(r=>{if(!S.schedule[r.date])S.schedule[r.date]={};S.schedule[r.date][r.employee_name]=r.shift;});
     }
     if(!msgs.error&&msgs.data){
-      S.messageLogs=msgs.data.map(r=>({id:r.id,createdAt:r.created_at_kr||'',patientName:r.patient_name||'',to:r.to_number||'',type:r.type||'',status:r.status||'',text:r.text||''}));
+      // 공지/전달사항/권한/일반 분리
+      const _noticeRows=msgs.data.filter(r=>r.type==='notice');
+      const _schedRows=msgs.data.filter(r=>r.type==='sched_notice');
+      const _permRows=msgs.data.filter(r=>r.type==='permission');
+      const _logRows=msgs.data.filter(r=>!['notice','sched_notice','permission'].includes(r.type));
+      S.messageLogs=_logRows.map(r=>({id:r.id,createdAt:r.created_at_kr||'',patientName:r.patient_name||'',to:r.to_number||'',type:r.type||'',status:r.status||'',text:r.text||''}));
+      // 공지사항 로드
+      if(!S.notices)S.notices={};
+      _noticeRows.forEach(r=>{if(r.to_number)S.notices[r.to_number]=r.text||'';});
+      // 전달사항 로드
+      if(!S.scheduleNotice)S.scheduleNotice={};
+      _schedRows.forEach(r=>{if(r.to_number)S.scheduleNotice[r.to_number]=r.text||'';});
+      // 권한 로드 + localStorage 캐시
+      _permRows.forEach(r=>{
+        const email=r.to_number||'';
+        const pages=JSON.parse(r.text||'[]');
+        const u=USERS.find(u=>u.email===email);
+        if(u)u.pages=pages;
+        if(S.user?.email===email)S.user.pages=pages;
+        try{const p=JSON.parse(localStorage.getItem('kh365_perms')||'{}');p[email]=pages;localStorage.setItem('kh365_perms',JSON.stringify(p));}catch(e){}
+      });
     }
     if(!inp.error&&inp.data){
       S.inpatients={};
@@ -3400,16 +3420,31 @@ function renderSchedule(){
 
   </div>`;
 }
-window.togglePagePerm=function(email,pageId,checked){
+window.togglePagePerm=async function(email,pageId,checked){
   const user=USERS.find(u=>u.email===email);
   if(!user) return;
   if(!user.pages) user.pages=[];
   if(checked){if(!user.pages.includes(pageId))user.pages.push(pageId);}
   else{user.pages=user.pages.filter(p=>p!==pageId);}
-  // 현재 로그인한 유저면 즉시 반영
-  if(S.user?.email===email) S.user.pages=user.pages;
-  showToast('✅ 권한 저장됨');
-};
+  // localStorage에 즉시 저장
+  try{
+    const perms=JSON.parse(localStorage.getItem('kh365_perms')||'{}');
+    perms[email]=user.pages;
+    localStorage.setItem('kh365_perms',JSON.stringify(perms));
+  }catch(e){}
+  // Supabase에 저장
+  if(_sb&&S.sbConnected){
+    await _sb.from('message_logs').delete().eq('patient_name','__PERM__').eq('to_number',email);
+    await _sb.from('message_logs').insert([{
+      created_at_kr:new Date().toLocaleString('ko-KR'),
+      patient_name:'__PERM__',to_number:email,
+      type:'permission',status:'active',
+      text:JSON.stringify(user.pages)
+    }]);
+  }
+  showToast('✅ 권한이 저장되었습니다');
+  render();
+}
 
 window.saveSchedNotice=async function(month){
   const ta=document.getElementById('sched-notice-area');
@@ -3925,7 +3960,13 @@ window.doLogin=()=>{
     // 로그인 성공 - 실패 카운트 초기화
     try{localStorage.removeItem(failKey);localStorage.removeItem(lockKey);}catch(e){}
     S.isLoggedIn=true;
-    S.user={name:user.name,email:user.email,role:user.role,pages:user.pages||[]};
+    // localStorage에서 저장된 권한 로드
+    let savedPages=user.pages||[];
+    try{
+      const perms=JSON.parse(localStorage.getItem('kh365_perms')||'{}');
+      if(perms[user.email]) savedPages=perms[user.email];
+    }catch(e){}
+    S.user={name:user.name,email:user.email,role:user.role,pages:savedPages};
     try{
       localStorage.setItem('kh365__loggedIn','1');
       localStorage.setItem('kh365__user',JSON.stringify(S.user));
