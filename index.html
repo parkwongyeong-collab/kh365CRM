@@ -331,7 +331,7 @@ const BIGUBYEO_PRESETS=[
   {name:'공진단',days:30,label:'공진단 30일'},
 ];
 const SHIFTS=['근무','DS','휴무','월차','연차','병가','기타'];
-const SHIFT_COLORS={근무:'#3b82f6',휴무:'#9ca3af',월차:'#10b981',연차:'#f59e0b',조퇴:'#ef4444',기타:'#8b5cf6'};
+const SHIFT_COLORS={근무:'#6b7280',DS:'#2563eb',휴무:'#ef4444',월차:'#eab308',연차:'#f97316',병가:'#22c55e',기타:'#ec4899'};
 const REFERRAL=['지인소개','인터넷','SNS','현수막','TV/라디오','기타'];
 const TREATMENT=['두통','안통','턱관절','경추통증','어깨통증','가슴통증','등통증','옆구리통증','허리통증','골반통증','무릎통증','종아리통증','발목통증','복숭아뼈통증','발바닥통증','발가락통증','엘보우통증','손목통증','손가락통증','소화불량','일반한약','공진단','다이어트'];
 const GUIDANCE=['전화','문자','카카오','직접','없음'];
@@ -3287,6 +3287,21 @@ function renderSchedule(){
     S.schedule[key][emp]=SHIFTS[(idx+1)%SHIFTS.length];save('schedule');if(_sb&&S.sbConnected)sbSave('schedule').catch(e=>console.error('schedule:',e));render();
   }
   window._cycleShift=cycleShift;
+  window.setShift=function(emp,d,val){
+    const key=`${m}-${p2(d)}`;
+    if(!S.schedule[key])S.schedule[key]={};
+    S.schedule[key][emp]=val;
+    save('schedule');
+    if(_sb&&S.sbConnected)sbSave('schedule').catch(e=>console.error('schedule:',e));
+    const sel=event.target;
+    if(sel){
+      const c=SHIFT_COLORS[val]||'';
+      sel.style.background=c?c+'33':'#f9fafb';
+      sel.style.color=c||'#9ca3af';
+      sel.style.borderColor=c||'#e5e7eb';
+      sel.style.fontWeight=val?'700':'400';
+    }
+  };
   return`<div class="content">
     <div class="page-title">👨‍⚕️ 직원 근무표</div>
     <div class="action-bar">
@@ -3304,7 +3319,12 @@ function renderSchedule(){
       </tr></thead>
       <tbody>${emps.map(emp=>`<tr>
         <td style="position:sticky;left:0;z-index:9;background:#fff;white-space:nowrap;font-size:13px;font-weight:600;border-right:2px solid #e5e7eb;padding:4px 10px">${emp}<button class="btn btn-sm" style="margin-left:6px;padding:2px 6px;font-size:11px" onclick="delEmp('${emp}')">×</button></td>
-        ${Array.from({length:days},(_,i)=>{const sh=getShift(emp,i+1);return`<td style="padding:3px;text-align:center"><button class="shift-btn" style="background:${sh?SHIFT_COLORS[sh]+'22':'#f9fafb'};color:${sh?SHIFT_COLORS[sh]:'#9ca3af'};border:1px solid ${sh?SHIFT_COLORS[sh]+'55':'#e5e7eb'}" onclick="_cycleShift('${emp}',${i+1})">${sh||'·'}</button></td>`}).join('')}</tr>`).join('')}
+        ${Array.from({length:days},(_,i)=>{const sh=getShift(emp,i+1);return`<td style="padding:2px;text-align:center"><select
+              onchange="setShift('${emp}',${i+1},this.value)"
+              style="font-size:11px;padding:3px 2px;border:2px solid ${sh?SHIFT_COLORS[sh]:'#e5e7eb'};border-radius:6px;background:${sh?SHIFT_COLORS[sh]+'33':'#f9fafb'};color:${sh?SHIFT_COLORS[sh]:'#9ca3af'};font-weight:${sh?'700':'400'};min-width:52px;cursor:pointer;outline:none;-webkit-appearance:none;text-align:center">
+              <option value="">·</option>
+              ${SHIFTS.map(s=>`<option value="${s}" ${sh===s?'selected':''}>${s}</option>`).join('')}
+            </select></td>`}).join('')}</tr>`).join('')}
       </tbody></table>
     </div>
 
@@ -3350,11 +3370,11 @@ function renderSchedule(){
           return`<div style="border:1px solid ${isToday?'#2563eb':'#e5e7eb'};border-radius:8px;padding:5px;min-height:70px;background:${isToday?'#eff6ff':'#fff'}">
             <div style="font-size:11px;font-weight:700;color:${dow===0?'#ef4444':dow===6?'#3b82f6':isToday?'#2563eb':'#374151'};margin-bottom:3px">${d}</div>
             ${Object.entries(shiftMap).length===0?'<div style="font-size:9px;color:#e5e7eb">-</div>':
-              Object.entries(shiftMap).map(([sh,empList])=>`
+              Object.entries(shiftMap).filter(([sh])=>sh!=='근무').map(([sh,empList])=>`
                 <div style="margin-bottom:2px">
-                  <span style="font-size:9px;font-weight:700;color:${SHIFT_COLORS[sh]||'#374151'};background:${SHIFT_COLORS[sh]||'#94a3b8'}22;padding:1px 3px;border-radius:3px">${sh}</span>
-                  <div style="font-size:9px;color:#374151">${empList.join(', ')}</div>
-                </div>`).join('')}
+                  <span style="font-size:9px;font-weight:700;color:${SHIFT_COLORS[sh]||'#374151'};background:${SHIFT_COLORS[sh]||'#94a3b8'}22;padding:1px 4px;border-radius:3px">${sh}</span>
+                  <div style="font-size:10px;color:#374151;line-height:1.4">${empList.join(', ')}</div>
+                </div>`).join('')||'<div style="font-size:9px;color:#d1d5db">근무</div>'}
           </div>`;
         }).join('')}
       </div>
