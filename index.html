@@ -384,7 +384,7 @@ var S={
   modal:null,toast:null,searchQ:'',isLoggedIn:false,hcPtSearch:'',hcAcOpen:false,hcTab:'daily',drawerOpen:false,hcPopup:null,bgModal_month:null,bgModal_search:'',ptSortKey:'chart',ptSortDir:'asc',ptSelected:new Set(),ptSelectMode:false,ptPage:1,quickAppts:[],_quickApptDate:'',quickApptsHistory:[],notices:{},statsTab:'daily',goalRevenue:0,
   user:{name:'관리자',email:'pwk2956@naver.com',role:'admin'},
   solapiKey:'',solapiSecret:'',solapiSender:'',
-  supabaseUrl:'https://mzdxunkqewctmognveqo.supabase.co',supabaseKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16ZHh1bmtxZXdjdG1vZ252ZXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQ2NTMsImV4cCI6MjA4OTM2MDY1M30.5e891hcJA7gBMqAgwglEjgHzIHLB_sSTVanu25EIizA',sbConnected:false,
+  supabaseUrl:'https://zkpngqrtivsiapgitksz.supabase.co',supabaseKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16ZHh1bmtxZXdjdG1vZ252ZXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQ2NTMsImV4cCI6MjA4OTM2MDY1M30.5e891hcJA7gBMqAgwglEjgHzIHLB_sSTVanu25EIizA',sbConnected:false,
   calSelectedDate:null,acTarget:null,acList:[],acRowId:null,
   newPt:{chartNumber:'',name:'',gender:'남',phone:'',visitType:'신환',referralPath:'지인소개',treatmentArea:[],memo:''},
   editPt:null,
@@ -843,8 +843,8 @@ async function loadFromSupabaseOrLocal(){
   return false;
 }
 // 하드코딩된 기본 Supabase 설정
-var DEFAULT_SB_URL='https://mzdxunkqewctmognveqo.supabase.co';
-var DEFAULT_SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16ZHh1bmtxZXdjdG1vZ252ZXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQ2NTMsImV4cCI6MjA4OTM2MDY1M30.5e891hcJA7gBMqAgwglEjgHzIHLB_sSTVanu25EIizA';
+var DEFAULT_SB_URL='https://zkpngqrtivsiapgitksz.supabase.co';
+var DEFAULT_SB_KEY='sb_publishable_Efnf5r3s-yZt8oxHIGSUSw_8W6-mCr-';
 
 function loadAll(){
   // patients 제외 - Supabase에서만 로드 (localStorage 5MB 한계 우회)
