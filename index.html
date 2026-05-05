@@ -291,7 +291,6 @@ tr:hover td{background:#fdfdfd}
 <script>
 'use strict';
 // ── 상수 ──────────────────────────────────────────────
-const VISIT_TYPES=['신환','재진','ta','ta초진','ta일반','ta추나','6개월재초진','건보추나'];
 const CATEGORIES=[
   {label:'65초진',price:1900},{label:'초진',price:12000},
   {label:'65초약침',price:2400},{label:'초약침',price:19000},
@@ -302,6 +301,7 @@ const CATEGORIES=[
   {label:'초진자보',price:0},{label:'재진자보',price:0},
   {label:'자보입원',price:0},{label:'자보퇴원',price:0},
 ];
+const VISIT_TYPES=CATEGORIES.map(c=>c.label);
 const CAT_PRICE=(cat)=>(CATEGORIES.find(c=>c.label===cat)||{price:null}).price;
 const CAT_LABELS=CATEGORIES.map(c=>c.label);
 
@@ -352,7 +352,7 @@ const INS_TYPES=['자보','산재','건보','자보100','퇴원'];
 const INS_COLORS={자보:'#3b82f6',산재:'#f97316',건보:'#10b981',자보100:'#8b5cf6',퇴원:'#9ca3af'};
 const SHIFTS=['근무','DS','휴무','월차','연차','병가','대체','기타'];
 const SHIFT_COLORS={근무:'#6b7280',DS:'#2563eb',휴무:'#ef4444',월차:'#eab308',연차:'#f97316',병가:'#22c55e',대체:'#06b6d4',기타:'#ec4899'};
-const REFERRAL=['지인소개','인터넷','SNS','현수막','TV/라디오','기타'];
+const REFERRAL=['스마트폰','PC','협약','플레이스','지인소개','협약처','현수막 건물앞','현수막 건물뒤','간판 앞','간판 뒤','기타'];
 const TREATMENT=['두통','안통','턱관절','경추통증','어깨통증','가슴통증','등통증','옆구리통증','허리통증','골반통증','무릎통증','종아리통증','발목통증','복숭아뼈통증','발바닥통증','발가락통증','엘보우통증','손목통증','손가락통증','소화불량','일반한약','공진단','다이어트'];
 const GUIDANCE=['전화','문자','카카오','직접','없음'];
 const TIME_OPT=(()=>{const t=[];for(let h=8;h<=21;h++){t.push(p2(h)+':00');if(h<21)t.push(p2(h)+':30')}return t})();
@@ -3003,7 +3003,7 @@ function renderNewPatient(isEdit){
         <div class="form-group"><label class="lbl">전화번호</label><input class="form-inp" placeholder="010-0000-0000" value="${(pt.phone||'').replace(/"/g,'&quot;')}" oninput="${isEdit?'S.editPt':'S.newPt'}.phone=this.value"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="lbl">구분</label><select class="form-inp" onchange="${isEdit?'S.editPt':'S.newPt'}.visitType=this.value">${VISIT_TYPES.map(t=>`<option ${pt.visitType===t?'selected':''}>${t}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="lbl">구분</label><select class="form-inp" onchange="${isEdit?'S.editPt':'S.newPt'}.visitType=this.value">${VISIT_TYPES.map(t=>{const c=CATEGORIES.find(x=>x.label===t);const price=c&&c.price>0?` (${c.price.toLocaleString()})`:c&&c.price===0?' (자보)':'';return`<option value="${t}" ${pt.visitType===t?'selected':''}>${t}${price}</option>`;}).join('')}</select></div>
         <div class="form-group"><label class="lbl">내원경로</label><select class="form-inp" onchange="${isEdit?'S.editPt':'S.newPt'}.referralPath=this.value">${REFERRAL.map(r=>`<option ${pt.referralPath===r?'selected':''}>${r}</option>`).join('')}</select></div>
       </div>
       <div class="form-group">
