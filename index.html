@@ -305,16 +305,7 @@ const USERS=[
   {email:'kh3654@naver.com', pw:'rudgml4',   name:'직원4',  role:'staff',   pages:['dashboard','calendar','patients','newpatient','ledger','happycall','schedule','messages']},
 ];
 
-const ROOMS=[
-  {id:'301',label:'301호',type:'3인실',beds:3},
-  {id:'302',label:'302호',type:'3인실',beds:3},
-  {id:'303',label:'303호',type:'당직실',beds:1},
-  {id:'304',label:'304호',type:'1인실',beds:1},
-  {id:'305',label:'305호',type:'1인실',beds:1},
-  {id:'306',label:'306호',type:'4인실',beds:4},
-  {id:'307',label:'307호',type:'3인실',beds:3},
-  {id:'308',label:'308호',type:'2인실',beds:2},
-];
+
 
 const BIGUBYEO_PRESETS=[
   {name:'보폐고',days:30,label:'보폐고 30일'},
@@ -330,6 +321,17 @@ const BIGUBYEO_PRESETS=[
   {name:'공진단',days:10,label:'공진단 10일'},
   {name:'공진단',days:30,label:'공진단 30일'},
 ];
+const ROOMS=[
+  {id:'301',name:'301호',beds:3},
+  {id:'302',name:'302호',beds:3},
+  {id:'304',name:'304호',beds:1},
+  {id:'305',name:'305호',beds:1},
+  {id:'306',name:'306호',beds:4},
+  {id:'307',name:'307호',beds:3},
+  {id:'308',name:'308호',beds:2},
+];
+const INS_TYPES=['자보','산재','건보','자보100','퇴원'];
+const INS_COLORS={자보:'#3b82f6',산재:'#f97316',건보:'#10b981',자보100:'#8b5cf6',퇴원:'#9ca3af'};
 const SHIFTS=['근무','DS','휴무','월차','연차','병가','대체','기타'];
 const SHIFT_COLORS={근무:'#6b7280',DS:'#2563eb',휴무:'#ef4444',월차:'#eab308',연차:'#f97316',병가:'#22c55e',대체:'#06b6d4',기타:'#ec4899'};
 const REFERRAL=['지인소개','인터넷','SNS','현수막','TV/라디오','기타'];
@@ -378,7 +380,7 @@ var S={
   patients:[],ledger:{},employees:['김간호','이실장','박치료사'],
   schedule:{},messageLogs:[],inpatients:{},happycalls:{},
   ledgerDate:todayStr(),calMonth:todayStr().slice(0,7),scheduleMonth:todayStr().slice(0,7),happycallDate:todayStr(),
-  modal:null,toast:null,searchQ:'',isLoggedIn:false,hcPtSearch:'',hcAcOpen:false,hcTab:'daily',drawerOpen:false,hcPopup:null,bgModal_month:null,bgModal_search:'',ptSortKey:'chart',ptSortDir:'asc',ptSelected:new Set(),ptSelectMode:false,ptPage:1,quickAppts:[],_quickApptDate:'',quickApptsHistory:[],scheduleNotice:{},statsTab:'daily',goalRevenue:0,
+  modal:null,toast:null,searchQ:'',isLoggedIn:false,hcPtSearch:'',hcAcOpen:false,hcTab:'daily',drawerOpen:false,hcPopup:null,bgModal_month:null,bgModal_search:'',ptSortKey:'chart',ptSortDir:'asc',ptSelected:new Set(),ptSelectMode:false,ptPage:1,quickAppts:[],_quickApptDate:'',quickApptsHistory:[],scheduleNotice:{},inpDate:'',statsTab:'daily',goalRevenue:0,
   user:{name:'관리자',email:'pwk2956@naver.com',role:'admin'},
   solapiKey:'',solapiSecret:'',solapiSender:'',
   supabaseUrl:'https://mzdxunkqewctmognveqo.supabase.co',supabaseKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16ZHh1bmtxZXdjdG1vZ252ZXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQ2NTMsImV4cCI6MjA4OTM2MDY1M30.5e891hcJA7gBMqAgwglEjgHzIHLB_sSTVanu25EIizA',sbConnected:false,
@@ -606,22 +608,41 @@ async function sbLoadAll(){
       if(!S.scheduleNotice)S.scheduleNotice={};
       _schedRows.forEach(r=>{if(r.to_number)S.scheduleNotice[r.to_number]=r.text||'';});
       // 권한 로드 + localStorage 캐시
-      _permRows.forEach(r=>{
-        const email=r.to_number||'';
-        const pages=JSON.parse(r.text||'[]');
-        const u=USERS.find(u=>u.email===email);
-        if(u)u.pages=pages;
-        if(S.user?.email===email)S.user.pages=pages;
-        try{const p=JSON.parse(localStorage.getItem('kh365_perms')||'{}');p[email]=pages;localStorage.setItem('kh365_perms',JSON.stringify(p));}catch(e){}
-      });
+      if(_permRows.length>0){
+        _permRows.forEach(r=>{
+          const email=r.to_number||'';
+          if(!email) return;
+          try{
+            const pages=JSON.parse(r.text||'[]');
+            const u=USERS.find(u=>u.email===email);
+            if(u) u.pages=pages;
+            // 현재 로그인 유저 권한 업데이트
+            if(S.user?.email===email) S.user.pages=pages;
+            // localStorage 캐시 업데이트
+            const p=JSON.parse(localStorage.getItem('kh365_perms')||'{}');
+            p[email]=pages;
+            localStorage.setItem('kh365_perms',JSON.stringify(p));
+          }catch(e){}
+        });
+      }
+      // Supabase에 권한 없는 유저는 localStorage 값 유지 (초기화 방지)
+      // renderSidebar에서 localStorage 직접 읽으므로 S.user.pages 불필요
     }
     if(!inp.error&&inp.data){
       S.inpatients={};
       inp.data.forEach(r=>{
-        if(!S.inpatients[r.date])S.inpatients[r.date]={};
-        if(!S.inpatients[r.date][r.room_id])S.inpatients[r.date][r.room_id]=[];
-        const bi=r.bed_number-1;
-        S.inpatients[r.date][r.room_id][bi]={id:r.id,bed:r.bed_number,name:r.name||'',meals:{morning:r.meal_morning||false,lunch:r.meal_lunch||false,dinner:r.meal_dinner||false},herbal:{morning:r.herbal_morning||'',lunch:r.herbal_lunch||'',dinner:r.herbal_dinner||''}};
+        if(!S.inpatients[r.date]) S.inpatients[r.date]={};
+        const key=(r.room_id||'')+'-'+(r.bed_number||1);
+        S.inpatients[r.date][key]={
+          chart:r.chart_number||'',
+          name:r.name||'',
+          ins:r.insurance||'',
+          admDate:r.adm_date||r.date||'',
+          dischargeDate:r.discharge_date||'',
+          mornin:r.meal_morning||false,
+          lunch:r.meal_lunch||false,
+          dinner:r.meal_dinner||false,
+        };
       });
     }
     if(!hc.error&&hc.data){
@@ -1530,8 +1551,11 @@ function renderSidebar(){
   const userEmail=S.user?.email||'';
   // localStorage에서 직접 권한 읽기
   let allowed=[];
-  try{const p=JSON.parse(localStorage.getItem('kh365_perms')||'{}');if(p[userEmail])allowed=p[userEmail];}catch(e){}
-  if(!allowed.length&&S.user?.pages?.length)allowed=S.user.pages;
+  try{
+    const p=JSON.parse(localStorage.getItem('kh365_perms')||'{}');
+    if(userEmail&&p[userEmail]&&p[userEmail].length>0) allowed=p[userEmail];
+    else if(S.user?.pages?.length>0) allowed=S.user.pages;
+  }catch(e){if(S.user?.pages?.length>0)allowed=S.user.pages;}
   const defaultPages=['dashboard','calendar','patients','newpatient','ledger','happycall','schedule','messages'];
   const items=userRole==='admin'?allItems:allowed.length?allItems.filter(i=>allowed.includes(i.id)):allItems.filter(i=>defaultPages.includes(i.id));
   const nm=S.user.name||'관리자';
@@ -1617,6 +1641,15 @@ function renderDashboard(){
   // 합집합 (중복 제거)
   const taPatientNames=new Set([...taFromLedger.map(r=>r.chartNumber),...taFromPts.map(p=>p.chartNumber)]);
   const taPatients=[...taPatientNames].map(cn=>allPt.find(p=>p.chartNumber===cn)||taFromLedger.find(r=>r.chartNumber===cn)).filter(Boolean);
+  // 입원현황 & 식사현황 계산
+  const inpDate=S.inpDate||td;
+  const todayInp=Object.entries(S.inpatients[inpDate]||{}).filter(([k,v])=>v.name||v.chart);
+  const activeInp=todayInp.filter(([k,v])=>v.ins&&v.ins!=='퇴원');
+  // 식사현황 - 오늘/주간/월간
+  const mealToday={morning:0,lunch:0,dinner:0,total:0};
+  todayInp.forEach(([k,v])=>{if(v.mornin)mealToday.morning++;if(v.lunch)mealToday.lunch++;if(v.dinner)mealToday.dinner++;});
+  mealToday.total=mealToday.morning+mealToday.lunch+mealToday.dinner;
+
   // 오늘 날짜 일계표 중 예약날짜 없는 건 (오늘 진료 당일 워크인)
   // 선택 날짜(td) 기준 일계표 (보고서 날짜와 동기화)
   const todayRows=getLedger(td);
@@ -1730,6 +1763,89 @@ function renderDashboard(){
     </tr>`).join('')),'lg');
   } else if(mo==='newpts'){
     mHtml=mWrap(`👤 신환 — ${newPts.length}명`,mTbl(['차트번호','이름','예약일','시간','메모'],newPts.map(r=>`<tr><td style="font-family:monospace;font-size:12px">${r.chartNumber||'-'}</td><td>${r.patientName||'-'}</td><td>${fmtDot(r.appointmentDate)}</td><td>${r.appointmentTime||'-'}</td><td>${r.memo||'-'}</td></tr>`).join('')));
+  } else if(mo==='inpatients'){
+    // 입원현황 팝업
+    const inpDate=S.inpDate||td;
+    const beds=Object.entries(S.inpatients[inpDate]||{}).filter(([k,v])=>v.name||v.chart);
+    const rows=beds.map(([key,bed])=>{
+      const pt=S.patients.find(p=>p.chartNumber===bed.chart);
+      const phone=pt?.phone||'-';
+      const admDate=bed.admDate||inpDate;
+      const dday=Math.floor((new Date(inpDate)-new Date(admDate))/(1000*60*60*24));
+      const roomNum=key.split('-')[0];
+      const bedNum=key.split('-')[1];
+      const room=ROOMS.find(r=>r.id===roomNum);
+      return{roomName:room?room.name:roomNum+'호',bedNum,chart:bed.chart||'-',name:bed.name||'-',ins:bed.ins||'-',admDate,phone,dday,ins_color:INS_COLORS[bed.ins]||'#374151'};
+    }).sort((a,b)=>a.roomName.localeCompare(b.roomName));
+    mHtml=mWrap(`🏥 입원현황 — ${rows.length}명 (${inpDate})`,
+      rows.length===0?'<div class="no-data">입원 환자 없음</div>':
+      mTbl(['호실','침대','차트번호','이름','보험','입원일','전화번호','D-day'],
+        rows.map(r=>`<tr>
+          <td style="font-weight:600">${r.roomName}</td>
+          <td style="text-align:center;color:#6b7280">${r.bedNum}번</td>
+          <td style="font-family:monospace;font-size:12px">${r.chart}</td>
+          <td style="font-weight:600">${r.name}</td>
+          <td><span style="background:${r.ins_color}22;color:${r.ins_color};font-weight:700;padding:2px 8px;border-radius:4px">${r.ins}</span></td>
+          <td style="font-size:12px">${r.admDate}</td>
+          <td style="font-size:12px">${r.phone}</td>
+          <td style="text-align:center;font-weight:700;color:${r.dday>=7?'#ef4444':r.dday>=3?'#f97316':'#059669'}">D+${r.dday}</td>
+        </tr>`).join('')));
+  } else if(mo==='meals'){
+    // 식사현황 팝업
+    const inpDate=S.inpDate||td;
+    // 주간 (7일)
+    const weekDates=Array.from({length:7},(_,i)=>addDays(inpDate,-6+i));
+    // 월간
+    const monthStart=inpDate.slice(0,7)+'-01';
+    const monthDays=new Date(+inpDate.slice(0,4),+inpDate.slice(5,7),0).getDate();
+    const monthDates=Array.from({length:monthDays},(_,i)=>inpDate.slice(0,7)+'-'+(String(i+1).padStart(2,'0')));
+
+    function getMealStats(dates){
+      let m=0,l=0,d=0,total=0;
+      dates.forEach(date=>{
+        Object.values(S.inpatients[date]||{}).forEach(bed=>{
+          if(bed.mornin)m++;if(bed.lunch)l++;if(bed.dinner)d++;
+        });
+      });
+      total=m+l+d;
+      return{morning:m,lunch:l,dinner:d,total};
+    }
+    const todayM=getMealStats([inpDate]);
+    const weekM=getMealStats(weekDates);
+    const monthM=getMealStats(monthDates);
+
+    // 오늘 환자별 식사
+    const todayBeds=Object.entries(S.inpatients[inpDate]||{}).filter(([k,v])=>v.name||v.chart);
+
+    mHtml=mWrap(`🍽️ 식사현황`,`
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+        ${[['오늘',todayM],['주간(7일)',weekM],['월간',monthM]].map(([label,m])=>`
+          <div style="text-align:center;padding:12px;background:#f9fafb;border-radius:8px">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#374151">${label}</div>
+            <div style="font-size:20px;font-weight:800;color:#2563eb">${m.total}식</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:4px">아침${m.morning}/점심${m.lunch}/저녁${m.dinner}</div>
+          </div>`).join('')}
+      </div>
+      <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#374151">오늘(${inpDate}) 환자별 식사</div>
+      ${todayBeds.length===0?'<div class="no-data">입원 환자 없음</div>':
+        `<table style="width:100%;font-size:13px">
+          <thead><tr style="background:#f8fafc">
+            <th>차트번호</th><th>이름</th>
+            <th style="text-align:center">🌅 아침</th>
+            <th style="text-align:center">☀️ 점심</th>
+            <th style="text-align:center">🌙 저녁</th>
+          </tr></thead>
+          <tbody>
+          ${todayBeds.map(([key,bed])=>`<tr style="border-bottom:1px solid #f3f4f6">
+            <td style="font-family:monospace;font-size:12px">${bed.chart||'-'}</td>
+            <td style="font-weight:600">${bed.name||'-'}</td>
+            <td style="text-align:center">${bed.mornin?'✅':'❌'}</td>
+            <td style="text-align:center">${bed.lunch?'✅':'❌'}</td>
+            <td style="text-align:center">${bed.dinner?'✅':'❌'}</td>
+          </tr>`).join('')}
+          </tbody>
+        </table>`}
+    `);
   } else if(mo==='bigubyeo'){
     const bgMonth=S.bgModal_month||thisMonth;
     const bgSearch=(S.bgModal_search||'').toLowerCase();
@@ -1885,6 +2001,10 @@ function renderDashboard(){
       ${sc('#fee2e2','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>','이번달 노쇼',monthNoShow.length+'건','','noshow',true)}
       ${sc('#f5f3ff','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="15" y2="16"/></svg>','비급여',bigubyeoRows.length+'건',bigubyeoToday.length?'오늘 '+bigubyeoToday.length+'건':'이번달','bigubyeo',true)}
     </div>
+    <div class="stat-row">
+      ${sc('#ecfdf5','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>','입원현황',activeInp.length+'명','클릭시 상세보기','inpatients',true)}
+      ${sc('#fef9c3','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>','오늘 식사',mealToday.total+'식','아침'+mealToday.morning+'/점심'+mealToday.lunch+'/저녁'+mealToday.dinner,'meals',true)}
+    </div>
     <div class="section-card">
       <div class="section-hdr">
         <div class="section-title">${I.cal} 금일 예약자</div>
@@ -2003,6 +2123,87 @@ function renderDashboard(){
             </td>
           </tr>`;}).join('')}
         </tbody></table></div>`}
+    </div>
+
+    <!-- 입원현황 -->
+    <div class="section-card">
+      <div class="section-hdr" style="flex-wrap:wrap;gap:8px">
+        <div class="section-title">🏥 입원현황</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:12px;color:#6b7280">기준일:</span>
+          <input type="date" style="font-size:12px;padding:3px 8px;border:1px solid #d1d5db;border-radius:6px"
+            value="${S.inpDate||td}"
+            onchange="S.inpDate=this.value;render()">
+          <button class="btn btn-sm" onclick="S.inpDate=todayStr();render()">오늘</button>
+          <button class="btn btn-sm" style="background:#2563eb;color:#fff;border-color:#2563eb" onclick="saveInpatients()">💾 저장</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        ${(()=>{
+          const inpDate=S.inpDate||td;
+          if(!S.inpatients) S.inpatients={};
+          if(!S.inpatients[inpDate]) S.inpatients[inpDate]={};
+          const dayData=S.inpatients[inpDate];
+
+          return ROOMS.map(room=>`
+            <div style="margin-bottom:12px">
+              <div style="font-size:13px;font-weight:700;color:#374151;background:#f8fafc;padding:6px 12px;border-radius:6px 6px 0 0;border:1px solid #e5e7eb">
+                ${room.name} <span style="font-size:11px;color:#9ca3af;font-weight:400">(${room.beds}인실)</span>
+              </div>
+              <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #e5e7eb;border-top:none">
+                <thead><tr style="background:#f9fafb">
+                  <th style="padding:6px 8px;text-align:left;width:80px">침대</th>
+                  <th style="padding:6px 8px;width:90px">차트번호</th>
+                  <th style="padding:6px 8px;width:80px">이름</th>
+                  <th style="padding:6px 8px;width:90px">보험</th>
+                  <th style="padding:6px 8px;width:100px">입원일</th>
+                  <th style="padding:6px 8px;text-align:center;width:50px">아침</th>
+                  <th style="padding:6px 8px;text-align:center;width:50px">점심</th>
+                  <th style="padding:6px 8px;text-align:center;width:50px">저녁</th>
+                </tr></thead>
+                <tbody>
+                ${Array.from({length:room.beds},(_,bi)=>{
+                  const key=room.id+'-'+(bi+1);
+                  const bed=dayData[key]||{chart:'',name:'',ins:'',admDate:inpDate,mornin:false,lunch:false,dinner:false};
+                  const insColor=INS_COLORS[bed.ins]||'';
+                  return`<tr style="border-top:1px solid #f3f4f6;${bed.ins==='퇴원'?'opacity:0.5;text-decoration:line-through':''}">
+                    <td style="padding:5px 8px;color:#6b7280;font-weight:600">${bi+1}번</td>
+                    <td style="padding:3px 4px;position:relative">
+                      <div class="ac-wrap">
+                        <input class="tci" style="font-family:monospace;font-size:11px" placeholder="차트번호"
+                          value="${(bed.chart||'').replace(/"/g,'&quot;')}"
+                          oninput="updInp('${inpDate}','${key}','chart',this.value);inpAC('${inpDate}','${key}',this.value)"
+                          onblur="hideInpAC('${inpDate}','${key}')">
+                        <div id="iac_${key}" class="ac-list" style="display:none"></div>
+                      </div>
+                    </td>
+                    <td style="padding:3px 4px"><input class="tci" style="font-size:11px" placeholder="이름"
+                      value="${(bed.name||'').replace(/"/g,'&quot;')}"
+                      oninput="updInp('${inpDate}','${key}','name',this.value)"></td>
+                    <td style="padding:3px 4px">
+                      <select class="tci" style="font-size:11px;color:${insColor};font-weight:${bed.ins?'700':'400'};background:${insColor?insColor+'15':''}"
+                        onchange="updInp('${inpDate}','${key}','ins',this.value)">
+                        <option value="">선택</option>
+                        ${INS_TYPES.map(t=>`<option value="${t}" ${bed.ins===t?'selected':''} style="color:${INS_COLORS[t]||'#374151'}">${t}</option>`).join('')}
+                      </select>
+                    </td>
+                    <td style="padding:3px 4px"><input type="date" class="tci" style="font-size:11px"
+                      value="${bed.admDate||inpDate}"
+                      onchange="updInp('${inpDate}','${key}','admDate',this.value)"></td>
+                    <td style="padding:3px;text-align:center"><input type="checkbox" style="width:16px;height:16px;cursor:pointer"
+                      ${bed.mornin?'checked':''} onchange="updInp('${inpDate}','${key}','mornin',this.checked)"></td>
+                    <td style="padding:3px;text-align:center"><input type="checkbox" style="width:16px;height:16px;cursor:pointer"
+                      ${bed.lunch?'checked':''} onchange="updInp('${inpDate}','${key}','lunch',this.checked)"></td>
+                    <td style="padding:3px;text-align:center"><input type="checkbox" style="width:16px;height:16px;cursor:pointer"
+                      ${bed.dinner?'checked':''} onchange="updInp('${inpDate}','${key}','dinner',this.checked)"></td>
+                  </tr>`;
+                }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `).join('');
+        })()}
+      </div>
     </div>
 
     <div class="section-card">
@@ -3438,6 +3639,83 @@ function renderSchedule(){
 
   </div>`;
 }
+// ── 입원현황 함수 ──────────────────────────────────
+window.updInp=function(date,key,field,val){
+  if(!S.inpatients) S.inpatients={};
+  if(!S.inpatients[date]) S.inpatients[date]={};
+  if(!S.inpatients[date][key]) S.inpatients[date][key]={chart:'',name:'',ins:'',admDate:date,mornin:false,lunch:false,dinner:false};
+  S.inpatients[date][key][field]=val;
+  // 퇴원 선택 시 이전 데이터 보존 + 퇴원일 기록
+  if(field==='ins'&&val==='퇴원'){
+    S.inpatients[date][key].dischargeDate=date;
+  }
+  // 자동저장 (디바운스)
+  clearTimeout(window._inpTimer);
+  window._inpTimer=setTimeout(()=>saveInpatients(),1500);
+};
+
+window.inpAC=function(date,key,val){
+  const box=document.getElementById('iac_'+key);
+  if(!box) return;
+  const q=val.toLowerCase();
+  if(!q){box.style.display='none';return;}
+  const matches=S.patients.filter(p=>(p.chartNumber||'').toLowerCase().startsWith(q)||(p.name||'').toLowerCase().includes(q)).slice(0,6);
+  if(!matches.length){box.style.display='none';return;}
+  box.innerHTML=matches.map(p=>`<div class="ac-item" onmousedown="pickInpAC('${date}','${key}','${p.chartNumber}','${p.name.replace(/'/g,"\\'")}')">
+    <span style="font-family:monospace;color:#6b7280;font-size:11px">${p.chartNumber}</span> ${p.name}
+  </div>`).join('');
+  box.style.display='block';
+};
+
+window.hideInpAC=function(date,key){
+  setTimeout(()=>{const b=document.getElementById('iac_'+key);if(b)b.style.display='none';},200);
+};
+
+window.pickInpAC=function(date,key,chart,name){
+  if(!S.inpatients) S.inpatients={};
+  if(!S.inpatients[date]) S.inpatients[date]={};
+  if(!S.inpatients[date][key]) S.inpatients[date][key]={chart:'',name:'',ins:'',admDate:date,mornin:false,lunch:false,dinner:false};
+  S.inpatients[date][key].chart=chart;
+  S.inpatients[date][key].name=name;
+  render();
+};
+
+window.saveInpatients=async function(){
+  if(!_sb||!S.sbConnected){
+    showToast('Supabase 미연결','err');return;
+  }
+  const allRows=[];
+  Object.entries(S.inpatients||{}).forEach(([date,rooms])=>{
+    Object.entries(rooms||{}).forEach(([key,bed])=>{
+      if(bed.chart||bed.name){
+        const [roomId,bedNum]=key.split('-');
+        allRows.push({
+          id:date+'_'+key,
+          date:date,
+          room_id:roomId,
+          bed_number:+bedNum||1,
+          name:bed.name||'',
+          chart_number:bed.chart||'',
+          insurance:bed.ins||'',
+          adm_date:bed.admDate||date,
+          discharge_date:bed.dischargeDate||'',
+          meal_morning:!!bed.mornin,
+          meal_lunch:!!bed.lunch,
+          meal_dinner:!!bed.dinner,
+        });
+      }
+    });
+  });
+  // upsert
+  if(allRows.length>0){
+    const{error}=await _sb.from('inpatients').upsert(allRows,{onConflict:'id'});
+    if(error) showToast('저장 실패: '+error.message,'err');
+    else showToast('✅ 입원현황 저장됨');
+  } else {
+    showToast('✅ 저장됨');
+  }
+};
+
 window.togglePagePerm=async function(email,pageId,checked){
   const user=USERS.find(u=>u.email===email);
   if(!user) return;
@@ -3989,22 +4267,6 @@ window.doLogin=()=>{
       localStorage.setItem('kh365__loggedIn','1');
       localStorage.setItem('kh365__user',JSON.stringify(S.user));
     }catch{}
-    // Supabase 연결되면 권한 최신화
-    if(_sb&&S.sbConnected){
-      _sb.from('message_logs').select('*').eq('patient_name','__PERM__').eq('to_number',user.email).then(({data})=>{
-        if(data&&data.length>0){
-          const pages=JSON.parse(data[0].text||'[]');
-          S.user.pages=pages;
-          try{
-            const perms=JSON.parse(localStorage.getItem('kh365_perms')||'{}');
-            perms[user.email]=pages;
-            localStorage.setItem('kh365_perms',JSON.stringify(perms));
-            localStorage.setItem('kh365__user',JSON.stringify(S.user));
-          }catch(e){}
-          render();
-        }
-      });
-    }
     render();
   } else {
     // 실패 카운트 증가
