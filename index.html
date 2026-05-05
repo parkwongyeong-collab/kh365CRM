@@ -308,19 +308,26 @@ const USERS=[
 
 
 const BIGUBYEO_PRESETS=[
-  {name:'보폐고',days:30,label:'보폐고 30일'},
-  {name:'동안약침',days:90,label:'동안약침 90일'},
-  {name:'동안약침',days:14,label:'동안약침 14일'},
+  {name:'한약',days:15,label:'한약 15일'},
+  {name:'한약',days:30,label:'한약 30일'},
+  {name:'녹용분골',days:15,label:'녹용분골 15일'},
+  {name:'목향공진단',days:10,label:'목향공진단 10일'},
+  {name:'원방공진단',days:10,label:'원방공진단 10일'},
+  {name:'경옥고스틱',days:15,label:'경옥고스틱 15일'},
+  {name:'다이어트한약',days:40,label:'다이어트한약 40일'},
   {name:'자보한약',days:7,label:'자보한약 7일'},
   {name:'자보진단서',days:14,label:'자보진단서 14일'},
-  {name:'다이어트',days:30,label:'다이어트 30일'},
-  {name:'다이어트',days:90,label:'다이어트 90일'},
-  {name:'다이어트',days:120,label:'다이어트 120일'},
-  {name:'성장환',days:30,label:'성장환 30일'},
-  {name:'첩약',days:14,label:'첩약 14일'},
-  {name:'공진단',days:10,label:'공진단 10일'},
-  {name:'공진단',days:30,label:'공진단 30일'},
 ];
+const BIGUBYEO2_PRESETS=[
+  {label:'약침'},{label:'봉침'},{label:'봉침하프'},{label:'동안약침'},
+  {label:'삼산비만약침'},{label:'청인유쾌환'},{label:'청인유쾌환 LS'},
+  {label:'통비단'},{label:'자운고'},{label:'시프겔'},
+];
+const BIGUBYEO3_PRESETS=[
+  {label:'진단서'},{label:'진료확인서'},{label:'입퇴원확인서'},
+  {label:'초진기록지'},{label:'진료기록부'},{label:'급여의뢰서'},
+];
+
 const ROOMS=[
   {id:'301',name:'301호',beds:3},
   {id:'302',name:'302호',beds:3},
@@ -1343,7 +1350,7 @@ function saveLedger(d,rows){
     });
   }
 }
-function newLedgerRow(){return{id:uid(),chartNumber:'',patientName:'',cashAmount:'',transferAmount:'',cardAmount:'',vendor:'',note:'',noteDate:'',noteDays:0,category:'',appointmentDate:'',appointmentTime:'',guidanceType:'',memo:'',noShow:false,prescription:'',prescriptionDate:'',prescriptionDays:0}}
+function newLedgerRow(){return{id:uid(),chartNumber:'',patientName:'',cashAmount:'',transferAmount:'',cardAmount:'',vendor:'',note:'',noteDate:'',noteDays:0,note2:'',note3:'',category:'',appointmentDate:'',appointmentTime:'',guidanceType:'',memo:'',noShow:false,prescription:'',prescriptionDate:'',prescriptionDays:0}}
 
 // 입원 헬퍼
 function getInpatients(d){
@@ -2262,6 +2269,18 @@ function renderLedger(){
           📅<input type="date" class="tci" style="font-size:10px;padding:1px 3px;width:115px;margin-left:2px" value="${r.noteDate||d}" onchange="updLR('${d}','${r.id}','noteDate',this.value)" title="복약 시작일">
         </div>`:''}
       </td>
+      <td style="min-width:100px">
+        <select class="tci" style="${r.note2?'color:#7c3aed;font-weight:600':''}" onchange="updBg2('${d}','${r.id}',this.value)">
+          <option value="">비급여2</option>
+          ${BIGUBYEO2_PRESETS.map(p=>`<option value="${p.label}" ${r.note2===p.label?'selected':''}>${p.label}</option>`).join('')}
+        </select>
+      </td>
+      <td style="min-width:100px">
+        <select class="tci" style="${r.note3?'color:#be185d;font-weight:600':''}" onchange="updBg3('${d}','${r.id}',this.value)">
+          <option value="">비급여3</option>
+          ${BIGUBYEO3_PRESETS.map(p=>`<option value="${p.label}" ${r.note3===p.label?'selected':''}>${p.label}</option>`).join('')}
+        </select>
+      </td>
       <td style="min-width:90px">
         <select class="tci" data-row-id="${r.id}" data-field="category" onchange="updLR('${d}','${r.id}','category',this.value)"><option value="">구분</option>${CATEGORIES.map(c=>`<option ${r.category===c?'selected':''}>${c}</option>`).join('')}</select>
         ${r.category==='비급여'?`<div style="margin-top:3px">
@@ -2313,8 +2332,8 @@ function renderLedger(){
       <div class="sum-item"><div class="sum-label">총건수</div><div class="sum-val">${rows.length}건</div></div>
     </div>
     <div style="overflow-x:auto;flex:1;-webkit-overflow-scrolling:touch">
-      <table style="min-width:1200px"><thead><tr>
-        <th style="width:36px">#</th><th>차트번호</th><th>성명</th><th>현금</th><th>계좌이체</th><th>카드</th><th>매입사</th><th>비급여</th><th>구분</th><th>예약날짜</th><th>예약시간</th><th>안내구분</th><th>메모</th><th style="text-align:center">관리</th>
+      <table style="min-width:1500px"><thead><tr>
+        <th style="width:36px">#</th><th>차트번호</th><th>성명</th><th>현금</th><th>계좌이체</th><th>카드</th><th>매입사</th><th>비급여</th><th>비급여2</th><th>비급여3</th><th>구분</th><th>예약날짜</th><th>예약시간</th><th>안내구분</th><th>메모</th><th style="text-align:center">관리</th>
       </tr></thead><tbody>
       ${rows.length?rows.map(buildRow).join(''):`<tr><td colspan="14"><div class="no-data">행 추가 버튼으로 내역을 입력하세요</div></td></tr>`}
       </tbody></table>
