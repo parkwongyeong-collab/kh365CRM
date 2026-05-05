@@ -292,7 +292,18 @@ tr:hover td{background:#fdfdfd}
 'use strict';
 // ── 상수 ──────────────────────────────────────────────
 const VISIT_TYPES=['신환','재진','ta','ta초진','ta일반','ta추나','6개월재초진','건보추나'];
-const CATEGORIES=['재진','신환','ta초진','ta','6개월재초진','건보추나','ta일반','ta추나','비급여'];
+const CATEGORIES=[
+  {label:'65초진',price:1900},{label:'초진',price:12000},
+  {label:'65초약침',price:2400},{label:'초약침',price:19000},
+  {label:'초약단추',price:34400},{label:'초약복추',price:51200},
+  {label:'65재진',price:1900},{label:'재진',price:8800},
+  {label:'65재약침',price:2400},{label:'재약침',price:15800},
+  {label:'재약단추',price:31200},{label:'재약복추',price:48100},
+  {label:'초진자보',price:0},{label:'재진자보',price:0},
+  {label:'자보입원',price:0},{label:'자보퇴원',price:0},
+];
+const CAT_PRICE=(cat)=>(CATEGORIES.find(c=>c.label===cat)||{price:null}).price;
+const CAT_LABELS=CATEGORIES.map(c=>c.label);
 
 // 비급여 처방 프리셋 (처방명, 기간일수)
 // ── 사용자 계정 ─────────────────────────────────────
@@ -1639,9 +1650,9 @@ function renderDashboard(){
     return all;
   })();
   // 신환: 일계표 구분이 '신환'인 것
-  const newPts=rows.filter(r=>r.category==='신환');
+  const newPts=rows.filter(r=>r.category&&r.category.startsWith('초'));
   // TA: 일계표 구분이 ta 관련인 것 (ta, ta초진, ta일반, ta추나)
-  const taCats=['ta','ta초진','ta일반','ta추나'];
+  const taCats=['초진자보','재진자보','자보입원'];
   const taFromLedger=rows.filter(r=>taCats.includes(r.category));
   // 환자목록에서도 TA 포함 (visitType 기준)
   const taFromPts=allPt.filter(p=>taCats.includes(p.visitType));
@@ -2242,10 +2253,19 @@ function renderLedger(){
   const card=rows.reduce((s,r)=>s+(+r.cardAmount||0),0);
 
   function buildRow(r,idx){
-    const _rowBg={'재진':'#cbd5e1','신환':'#fde047','ta':'#67e8f9','ta초진':'#67e8f9','ta일반':'#67e8f9','ta추나':'#67e8f9','6개월재초진':'#fb923c'}[r.category]||'';
+    const _catColors={
+      '65초진':'#fef9c3','초진':'#fde047',
+      '65초약침':'#fef9c3','초약침':'#fde047',
+      '초약단추':'#fde047','초약복추':'#fde047',
+      '65재진':'#f1f5f9','재진':'#cbd5e1',
+      '65재약침':'#f1f5f9','재약침':'#cbd5e1',
+      '재약단추':'#cbd5e1','재약복추':'#cbd5e1',
+      '초진자보':'#67e8f9','재진자보':'#67e8f9',
+      '자보입원':'#bbf7d0','자보퇴원':'#fca5a5'};
+    const _rowBg=_catColors[r.category]||'';
     return`<tr id="lr_${r.id}" style="${_rowBg?'background:'+_rowBg+';':''}">
-      <td style="text-align:center;font-size:12px;color:#9ca3af;width:36px">${idx+1}</td>
-      <td style="width:90px;position:relative">
+      <td style="text-align:center;font-size:12px;color:#9ca3af;width:36px;position:sticky;left:0;z-index:5;background:${_rowBg||'#fff'};border-right:1px solid #e5e7eb">${idx+1}</td>
+      <td style="width:90px;position:sticky;left:36px;z-index:5;background:${_rowBg||'#fff'};border-right:1px solid #e5e7eb">
         <div class="ac-wrap">
           <input class="tci" style="font-family:monospace;min-width:75px" placeholder="차트번호"
             data-row-id="${r.id}" data-field="chartNumber"
@@ -2255,7 +2275,14 @@ function renderLedger(){
           <div id="ac_${r.id}" class="ac-list" style="display:none"></div>
         </div>
       </td>
-      <td style="width:80px"><input class="tci" placeholder="성명" data-row-id="${r.id}" data-field="patientName" value="${(r.patientName||'').replace(/"/g,'&quot;')}" oninput="updLR('${d}','${r.id}','patientName',this.value)"></td>
+      <td style="width:80px;position:sticky;left:126px;z-index:5;background:${_rowBg||'#fff'};border-right:1px solid #e5e7eb"><input class="tci" placeholder="성명" data-row-id="${r.id}" data-field="patientName" value="${(r.patientName||'').replace(/"/g,'&quot;')}" oninput="updLR('${d}','${r.id}','patientName',this.value)"></td>
+      <td style="min-width:110px;position:sticky;left:206px;z-index:5;background:${_rowBg||'#fff'};border-right:2px solid #d1d5db">
+        <select class="tci" style="font-size:12px;font-weight:600;color:${r.category?'#374151':'#9ca3af'}"
+          onchange="pickCategory('${d}','${r.id}',this.value)">
+          <option value="">환자구분</option>
+          ${CATEGORIES.map(c=>`<option value="${c.label}" ${r.category===c.label?'selected':''}>${c.label}${c.price>0?' ('+c.price.toLocaleString()+')':c.price===0?' (자보)':''}</option>`).join('')}
+        </select>
+      </td>
       <td style="width:80px"><input class="tci tci-num" style="min-width:70px" placeholder="0" value="${r.cashAmount||''}" oninput="updLR('${d}','${r.id}','cashAmount',this.value)"></td>
       <td style="width:80px"><input class="tci tci-num" placeholder="0" value="${r.transferAmount||''}" oninput="updLR('${d}','${r.id}','transferAmount',this.value)"></td>
       <td style="width:80px"><input class="tci tci-num" placeholder="0" value="${r.cardAmount||''}" oninput="updLR('${d}','${r.id}','cardAmount',this.value)"></td>
@@ -2281,18 +2308,7 @@ function renderLedger(){
           ${BIGUBYEO3_PRESETS.map(p=>`<option value="${p.label}" ${r.note3===p.label?'selected':''}>${p.label}</option>`).join('')}
         </select>
       </td>
-      <td style="min-width:90px">
-        <select class="tci" data-row-id="${r.id}" data-field="category" onchange="updLR('${d}','${r.id}','category',this.value)"><option value="">구분</option>${CATEGORIES.map(c=>`<option ${r.category===c?'selected':''}>${c}</option>`).join('')}</select>
-        ${r.category==='비급여'?`<div style="margin-top:3px">
-          <select class="tci" style="font-size:10px;color:#7c3aed" onchange="setBigubyeo('${d}','${r.id}',this.value)">
-            <option value="">처방 선택</option>
-            ${BIGUBYEO_PRESETS.map(p=>`<option value="${p.label}|${p.days}" ${r.prescription===p.label?'selected':''}>${p.label}</option>`).join('')}
-          </select>
-          ${r.prescription?`<div style="font-size:10px;color:#7c3aed;margin-top:2px">
-            📅 <input type="date" class="tci" style="font-size:10px;padding:1px 3px;width:110px" value="${r.prescriptionDate||''}" onchange="updLR('${d}','${r.id}','prescriptionDate',this.value)">
-          </div>`:''}
-        </div>`:''}
-      </td>
+
       <td style="width:110px"><input type="date" class="tci" style="font-size:11px" value="${r.appointmentDate||''}" onchange="updLR('${d}','${r.id}','appointmentDate',this.value)"></td>
       <td style="width:90px"><select class="tci" onchange="updLR('${d}','${r.id}','appointmentTime',this.value)"><option value="">시간</option>${TIME_OPT.map(t=>`<option ${r.appointmentTime===t?'selected':''}>${t}</option>`).join('')}</select></td>
       <td style="width:80px"><select class="tci" onchange="updLR('${d}','${r.id}','guidanceType',this.value)"><option value="">안내</option>${GUIDANCE.map(g=>`<option ${r.guidanceType===g?'selected':''}>${g}</option>`).join('')}</select></td>
@@ -2332,8 +2348,11 @@ function renderLedger(){
       <div class="sum-item"><div class="sum-label">총건수</div><div class="sum-val">${rows.length}건</div></div>
     </div>
     <div style="overflow-x:auto;flex:1;-webkit-overflow-scrolling:touch">
-      <table style="min-width:1500px"><thead><tr>
-        <th style="width:36px">#</th><th>차트번호</th><th>성명</th><th>현금</th><th>계좌이체</th><th>카드</th><th>매입사</th><th>비급여</th><th>비급여2</th><th>비급여3</th><th>구분</th><th>예약날짜</th><th>예약시간</th><th>안내구분</th><th>메모</th><th style="text-align:center">관리</th>
+      <table style="min-width:1500px;border-collapse:separate;border-spacing:0"><thead><tr>
+        <th style="width:36px;position:sticky;left:0;z-index:11;background:#f8fafc;border-right:1px solid #e5e7eb">#</th>
+          <th style="position:sticky;left:36px;z-index:11;background:#f8fafc;min-width:90px;border-right:1px solid #e5e7eb">차트번호</th>
+          <th style="position:sticky;left:126px;z-index:11;background:#f8fafc;min-width:80px;border-right:1px solid #e5e7eb">성명</th>
+          <th style="position:sticky;left:206px;z-index:11;background:#f8fafc;min-width:110px;border-right:2px solid #d1d5db">환자구분</th><th>현금</th><th>계좌이체</th><th>카드</th><th>매입사</th><th>비급여</th><th>비급여2</th><th>비급여3</th><th>예약날짜</th><th>예약시간</th><th>안내구분</th><th>메모</th><th style="text-align:center">관리</th>
       </tr></thead><tbody>
       ${rows.length?rows.map(buildRow).join(''):`<tr><td colspan="14"><div class="no-data">행 추가 버튼으로 내역을 입력하세요</div></td></tr>`}
       </tbody></table>
@@ -3761,6 +3780,31 @@ window.togglePagePerm=async function(email,pageId,checked){
   render();
 }
 
+window.pickCategory=function(d,id,val){
+  const rows=getLedger(d).map(r=>{
+    if(r.id!==id) return r;
+    const catObj=CATEGORIES.find(c=>c.label===val);
+    const price=catObj?catObj.price:null;
+    const updated={...r,category:val};
+    if(price>0&&!r.cashAmount&&!r.transferAmount&&!r.cardAmount){
+      updated.cardAmount=price;
+    }
+    return updated;
+  });
+  saveLedger(d,rows);
+  if(_sb&&S.sbConnected)sbSave('ledger:'+d).catch(e=>console.error(e));
+  render();
+};
+window.updBg2=function(d,id,val){
+  saveLedger(d,getLedger(d).map(r=>r.id===id?{...r,note2:val}:r));
+  if(_sb&&S.sbConnected)sbSave('ledger:'+d).catch(e=>console.error(e));
+  render();
+};
+window.updBg3=function(d,id,val){
+  saveLedger(d,getLedger(d).map(r=>r.id===id?{...r,note3:val}:r));
+  if(_sb&&S.sbConnected)sbSave('ledger:'+d).catch(e=>console.error(e));
+  render();
+};
 window.saveSchedNotice=async function(month){
   const ta=document.getElementById('sched-notice-area');
   const text=ta?ta.value:'';
