@@ -533,8 +533,8 @@ function markMyChange(data){
 // ── 매핑 함수 ──────────────────────────────────────
 function ptToRow(p){return{id:p.id,chart_number:p.chartNumber||'',name:p.name||'',gender:p.gender||'남',phone:p.phone||'',visit_type:p.visitType||'',referral_path:p.referralPath||'',treatment_area:JSON.stringify(p.treatmentArea||[]),memo:p.memo||'',created_at:p.createdAt||new Date().toISOString()};}
 function rowToPt(r){return{id:r.id,chartNumber:r.chart_number||'',name:r.name||'',gender:r.gender||'남',phone:r.phone||'',visitType:r.visit_type||'',referralPath:r.referral_path||'',treatmentArea:Array.isArray(r.treatment_area)?r.treatment_area:(typeof r.treatment_area==='string'?JSON.parse(r.treatment_area||'[]'):[]),memo:r.memo||'',createdAt:r.created_at||''};}
-function ledRowToSB(r,date){return{id:r.id,date:date,chart_number:r.chartNumber||'',patient_name:r.patientName||'',cash_amount:+r.cashAmount||0,transfer_amount:+r.transferAmount||0,card_amount:+r.cardAmount||0,vendor:r.vendor||'',note:r.note||'',note_date:r.noteDate||'',note_days:r.noteDays||0,category:r.category||'',appointment_date:r.appointmentDate||'',appointment_time:r.appointmentTime||'',guidance_type:r.guidanceType||'',memo:r.memo||'',no_show:!!r.noShow,prescription:r.prescription||'',prescription_date:r.prescriptionDate||'',prescription_days:r.prescriptionDays||0};}
-function sbToLedRow(r){return{id:r.id,chartNumber:r.chart_number||'',patientName:r.patient_name||'',cashAmount:r.cash_amount||0,transferAmount:r.transfer_amount||0,cardAmount:r.card_amount||0,vendor:r.vendor||'',note:r.note||'',noteDate:r.note_date||'',noteDays:r.note_days||0,category:r.category||'',appointmentDate:r.appointment_date||'',appointmentTime:r.appointment_time||'',guidanceType:r.guidance_type||'',memo:r.memo||'',noShow:r.no_show||false,prescription:r.prescription||'',prescriptionDate:r.prescription_date||'',prescriptionDays:r.prescription_days||0};}
+function ledRowToSB(r,date){return{id:r.id,date:date,chart_number:r.chartNumber||'',patient_name:r.patientName||'',cash_amount:+r.cashAmount||0,transfer_amount:+r.transferAmount||0,card_amount:+r.cardAmount||0,vendor:r.vendor||'',note:r.note||'',note_date:r.noteDate||'',note_days:r.noteDays||0,category:r.category||'',appointment_date:r.appointmentDate||'',appointment_time:r.appointmentTime||'',guidance_type:r.guidanceType||'',memo:r.memo||'',no_show:!!r.noShow,prescription:r.prescription||'',prescription_date:r.prescriptionDate||'',prescription_days:r.prescriptionDays||0,created_at:r.createdAt||new Date().toISOString()};}
+function sbToLedRow(r){return{id:r.id,chartNumber:r.chart_number||'',patientName:r.patient_name||'',cashAmount:r.cash_amount||0,transferAmount:r.transfer_amount||0,cardAmount:r.card_amount||0,vendor:r.vendor||'',note:r.note||'',noteDate:r.note_date||'',noteDays:r.note_days||0,category:r.category||'',appointmentDate:r.appointment_date||'',appointmentTime:r.appointment_time||'',guidanceType:r.guidance_type||'',memo:r.memo||'',noShow:r.no_show||false,prescription:r.prescription||'',prescriptionDate:r.prescription_date||'',prescriptionDays:r.prescription_days||0,createdAt:r.created_at||''};}
 function hcToSB(h){return{id:h.id,date:h.date,patient_id:h.patientId||'',chart_number:h.chartNumber||'',patient_name:h.patientName||'',phone:h.phone||'',visit_type:h.visitType||'',status:h.status||'pending',memo:h.memo||'',call_time:h.callTime||'',appt_done:!!h.apptDone};}
 function sbToHc(r){return{id:r.id,date:r.date,patientId:r.patient_id||'',chartNumber:r.chart_number||'',patientName:r.patient_name||'',phone:r.phone||'',visitType:r.visit_type||'',status:r.status||'pending',memo:r.memo||'',callTime:r.call_time||'',apptDone:r.appt_done||false,createdAt:r.created_at||''};}
 function inpToSB(date,roomId,bedIdx,b){return{id:b.id,date,room_id:roomId,bed_number:b.bed,name:b.name||'',meal_morning:b.meals?.morning||false,meal_lunch:b.meals?.lunch||false,meal_dinner:b.meals?.dinner||false,herbal_morning:b.herbal?.morning||'',herbal_lunch:b.herbal?.lunch||'',herbal_dinner:b.herbal?.dinner||''};}
@@ -564,7 +564,7 @@ async function loadAllLedgerRows(){
   while(true){
     const{data,error}=await _sb.from('ledger_rows')
       .select('*')
-      .order('date',{ascending:false})
+      .order('date',{ascending:false}).order('created_at',{ascending:true})
       .range(from,from+PAGE-1);
     if(error){console.error('ledger 페이지 로드 오류:',error);break;}
     if(!data||data.length===0) break;
@@ -1207,6 +1207,12 @@ window.saveQuickAppts=async function(){
   render();
 };
 
+window.addDivider=function(d){
+  const rows=getLedger(d);
+  rows.push({id:'div_'+uid(),_divider:true,_label:'── 오후 ──'});
+  saveLedger(d,rows);
+  render();
+};
 window.ptSearchInput=function(val){
   S.searchQ=val;
   S.ptPage=1;
@@ -1373,7 +1379,7 @@ function saveLedger(d,rows){
     });
   }
 }
-function newLedgerRow(){return{id:uid(),chartNumber:'',patientName:'',cashAmount:'',transferAmount:'',cardAmount:'',vendor:'',note:'',noteDate:'',noteDays:0,note2:'',note3:'',category:'',appointmentDate:'',appointmentTime:'',guidanceType:'',memo:'',noShow:false,prescription:'',prescriptionDate:'',prescriptionDays:0}}
+function newLedgerRow(){return{id:uid(),chartNumber:'',patientName:'',cashAmount:'',transferAmount:'',cardAmount:'',vendor:'',note:'',noteDate:'',noteDays:0,note2:'',note3:'',category:'',appointmentDate:'',appointmentTime:'',guidanceType:'',memo:'',noShow:false,prescription:'',prescriptionDate:'',prescriptionDays:0,createdAt:new Date().toISOString()}}
 
 // 입원 헬퍼
 function getInpatients(d){
@@ -2349,6 +2355,7 @@ function renderLedger(){
         </div>
         <button class="btn btn-sm" onclick="S.ledgerDate=todayStr();render()" style="background:#2563eb;color:#fff;border-color:#2563eb">오늘</button>
         <button class="btn btn-sm" onclick="addLR('${d}')">${I.plus} 행 추가</button>
+        <button class="btn btn-sm" style="background:#e0f2fe;color:#0284c7;border-color:#bae6fd;font-size:12px" onclick="addDivider('${d}')">— 구분선</button>
         <input type="date" id="datepicker-ledger" value="${d}" onchange="setDate(this.value)" style="position:fixed;top:-300px;left:-300px;width:1px;height:1px;opacity:0;pointer-events:none;">
         <input type="date" id="datepicker-ledger2" value="${d}" onchange="setDate(this.value)" style="position:fixed;top:-300px;left:-300px;width:1px;height:1px;opacity:0;pointer-events:none;">
         <button class="btn btn-sm" onclick="downloadExcel()">${I.dl} 엑셀</button>
@@ -2369,7 +2376,22 @@ function renderLedger(){
           <th style="position:sticky;left:126px;z-index:11;background:#f8fafc;min-width:80px;border-right:1px solid #e5e7eb">성명</th>
           <th style="position:sticky;left:206px;z-index:11;background:#f8fafc;min-width:110px;border-right:2px solid #d1d5db">환자구분</th><th>현금</th><th>계좌이체</th><th>카드</th><th>매입사</th><th>비급여</th><th>비급여2</th><th>비급여3</th><th>예약날짜</th><th>예약시간</th><th>안내구분</th><th>메모</th><th style="text-align:center">관리</th>
       </tr></thead><tbody>
-      ${rows.length?rows.map(buildRow).join(''):`<tr><td colspan="14"><div class="no-data">행 추가 버튼으로 내역을 입력하세요</div></td></tr>`}
+      ${rows.length?(()=>{
+        let html='';
+        rows.forEach((r,i)=>{
+          // 구분선 row
+          if(r._divider){
+            html+=`<tr><td colspan="16" style="padding:2px 0;background:#fff">
+              <div style="height:3px;background:linear-gradient(90deg,transparent,#bae6fd 20%,#0284c7 50%,#bae6fd 80%,transparent);position:relative;border-radius:99px">
+                <span style="position:absolute;left:50%;transform:translateX(-50%);top:-10px;font-size:11px;font-weight:700;color:#0284c7;background:#fff;padding:1px 12px;border-radius:99px;border:1.5px solid #bae6fd;white-space:nowrap">${r._label||'── 오후 ──'}</span>
+              </div>
+            </td></tr>`;
+            return;
+          }
+          html+=buildRow(r,i);
+        });
+        return html;
+      })():`<tr><td colspan="16"><div class="no-data">행 추가 버튼으로 내역을 입력하세요</div></td></tr>`}
       </tbody></table>
     </div>
   </div>`;
