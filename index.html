@@ -292,14 +292,26 @@ tr:hover td{background:#fdfdfd}
 'use strict';
 // ── 상수 ──────────────────────────────────────────────
 const CATEGORIES=[
-  {label:'65초진',price:1900},{label:'초진',price:12000},
-  {label:'65초약침',price:2400},{label:'초약침',price:19000},
-  {label:'초약단추',price:34400},{label:'초약복추',price:51200},
-  {label:'65재진',price:1900},{label:'재진',price:8800},
-  {label:'65재약침',price:2400},{label:'재약침',price:15800},
-  {label:'재약단추',price:31200},{label:'재약복추',price:48100},
-  {label:'초진자보',price:0},{label:'재진자보',price:0},
-  {label:'자보입원',price:0},{label:'자보퇴원',price:0},
+  // 65 그룹
+  {label:'65초진',price:1900,group:'65'},
+  {label:'65초보가약',price:2400,group:'65'},
+  {label:'65초약침',price:8900,group:'65'},
+  {label:'65재',price:1900,group:'65'},
+  {label:'65재약침',price:8900,group:'65'},
+  {label:'65재가약',price:9400,group:'65'},
+  // 일반 그룹
+  {label:'초진',price:12000,group:'일반'},
+  {label:'초약침',price:19000,group:'일반'},
+  {label:'초약단추',price:34400,group:'일반'},
+  {label:'초약복추',price:51200,group:'일반'},
+  {label:'재진',price:8800,group:'일반'},
+  {label:'재약침',price:15800,group:'일반'},
+  {label:'재가약침',price:18888,group:'일반'},
+  // 자보 그룹
+  {label:'자보초진',price:0,group:'자보'},
+  {label:'자보재진',price:0,group:'자보'},
+  {label:'자보초입원',price:0,group:'자보'},
+  {label:'자보재입원',price:0,group:'자보'},
 ];
 const VISIT_TYPES=CATEGORIES.map(c=>c.label);
 const CAT_PRICE=(cat)=>(CATEGORIES.find(c=>c.label===cat)||{price:null}).price;
@@ -2253,16 +2265,16 @@ function renderLedger(){
   const card=rows.reduce((s,r)=>s+(+r.cardAmount||0),0);
 
   function buildRow(r,idx){
-    const _catColors={
-      '65초진':'#fef9c3','초진':'#fde047',
-      '65초약침':'#fef9c3','초약침':'#fde047',
-      '초약단추':'#fde047','초약복추':'#fde047',
-      '65재진':'#f1f5f9','재진':'#cbd5e1',
-      '65재약침':'#f1f5f9','재약침':'#cbd5e1',
-      '재약단추':'#cbd5e1','재약복추':'#cbd5e1',
-      '초진자보':'#67e8f9','재진자보':'#67e8f9',
-      '자보입원':'#bbf7d0','자보퇴원':'#fca5a5'};
-    const _rowBg=_catColors[r.category]||'';
+    const _catBg=(cat)=>{
+      const c=CATEGORIES.find(x=>x.label===cat);
+      if(!c) return '';
+      if(c.group==='65') return '#fef9c3';
+      if(c.group==='자보') return '#e0f2fe';
+      if(cat.startsWith('초')) return '#fde047';
+      if(cat.startsWith('재')) return '#cbd5e1';
+      return '';
+    };
+    const _rowBg=_catBg(r.category);
     return`<tr id="lr_${r.id}" style="${_rowBg?'background:'+_rowBg+';':''}">
       <td style="text-align:center;font-size:12px;color:#9ca3af;width:36px;position:sticky;left:0;z-index:5;background:${_rowBg||'#fff'};border-right:1px solid #e5e7eb">${idx+1}</td>
       <td style="width:90px;position:sticky;left:36px;z-index:5;background:${_rowBg||'#fff'};border-right:1px solid #e5e7eb">
@@ -2280,7 +2292,10 @@ function renderLedger(){
         <select class="tci" style="font-size:12px;font-weight:600;color:${r.category?'#374151':'#9ca3af'}"
           onchange="pickCategory('${d}','${r.id}',this.value)">
           <option value="">환자구분</option>
-          ${CATEGORIES.map(c=>`<option value="${c.label}" ${r.category===c.label?'selected':''}>${c.label}${c.price>0?' ('+c.price.toLocaleString()+')':c.price===0?' (자보)':''}</option>`).join('')}
+          ${['65','일반','자보'].map(g=>`
+            <optgroup label="── ${g==='65'?'65세 이상':g==='일반'?'일반':g==='자보'?'자보':g} ──">
+              ${CATEGORIES.filter(c=>c.group===g).map(c=>`<option value="${c.label}" ${r.category===c.label?'selected':''}>${c.label}${c.price>0?' ('+c.price.toLocaleString()+')':c.price===0?' (자보)':''}</option>`).join('')}
+            </optgroup>`).join('')}
         </select>
       </td>
       <td style="width:80px"><input class="tci tci-num" style="min-width:70px" placeholder="0" value="${r.cashAmount||''}" oninput="updLR('${d}','${r.id}','cashAmount',this.value)"></td>
